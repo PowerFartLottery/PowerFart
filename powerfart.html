@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PowerFart</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Fira Code', monospace;
+      background-color: #0d0d0d;
+      color: #c3f9d2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+    }
+    .logo {
+      font-size: 1em;
+      margin-bottom: 1em;
+      color: #ff5cc9;
+      white-space: pre;
+      line-height: 1.2;
+    }
+    pre {
+      background: #1a1a1a;
+      color: #c3f9d2;
+      padding: 1.5em;
+      border-radius: 8px;
+      max-width: 800px;
+      width: 100%;
+      overflow-x: auto;
+      font-size: 0.95em;
+    }
+    .keyword { color: #ff9d00; }
+    .function { color: #00d0ff; }
+    .comment { color: #888; font-style: italic; }
+    .string { color: #c6f0ff; }
+    .number { color: #ffc600; }
+    .footer {
+      margin-top: 2em;
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="logo">
+   ____   _____        _______ ____  _____ _    ____ _____ 
+  |  _ \ / _ \ \      / / ____|  _ \|  ___/ \  |  _ \_   _|
+  | |_) | | | \ \ /\ / /|  _| | |_) | |_ / _ \ | |_) || |  
+  |  __/| |_| |\ V  V / | |___|  _ <|  _/ ___ \|  _ < | |  
+  |_|    \___/  \_/\_/  |_____|_| \_\_|/_/   \_\_| \_\|_|  
+  </div>
+
+  <pre><code><span class="comment">/* PowerFart Lottery Logic */</span>
+
+<span class="comment">// Eligibility Check</span>
+<span class="keyword">function</span> <span class="function">eligibility</span>(wallet) {
+  <span class="keyword">return</span> wallet.balance &gt;= <span class="number">10000</span>;
+}
+
+<span class="comment">/* Holding Duration Boost */</span>
+<span class="keyword">function</span> <span class="function">weightedChance</span>(wallet) {
+  <span class="keyword">return</span> wallet.holdTime * wallet.balance;
+}
+
+<span class="comment">// Winner Selection</span>
+<span class="keyword">const</span> <span class="function">powerFart</span> = () =&gt; {
+  <span class="keyword">const</span> winner = <span class="function">randomHolder</span>();
+  <span class="keyword">if</span> (winner.<span class="function">isLucky</span>()) {
+    <span class="function">airdropFartcoin</span>(winner.address);
+  }
+}
+
+<span class="comment">// No tickets. No effort. Just hold PF tokens</span>
+<span class="comment">// and get Fartcoin directly in your wallet.</span>
+</code></pre>
+
+  <div class="footer">Made with 💻 on Solana</div>
+</body>
+</html>
