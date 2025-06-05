@@ -7,8 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet" />
   <style>
     body {
-
-      
       margin: 0;
       font-family: 'Fira Code', monospace;
       background-color: #0d0d0d;
@@ -92,13 +90,13 @@
     }
 
     #countdown {
-      font-size: 1.25rem; /* reduced from 2rem */
+      font-size: 1.25rem;
       font-weight: bold;
       color: #ffcc00;
     }
 
     #jackpot {
-      font-size: 1.1rem; /* reduced from 1.5rem */
+      font-size: 1.1rem;
       margin-bottom: 1rem;
     }
 
@@ -140,146 +138,204 @@
       0% { bottom: 80px; opacity: 1; }
       100% { bottom: 200px; opacity: 0; }
     }
-  </style>
-</head>
-<body>
 
-  <div id="bootScreen" style="
-  position: fixed;
-  top:0; left:0; right:0; bottom:0;
-  background: black;
-  color: #0f0;
-  font-family: monospace;
-  font-size: 1.1rem;
-  padding: 1rem;
-  white-space: pre-wrap;
-  overflow-y: auto;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  user-select: none;
-">
-  <div id="bootText"></div>
-  <div id="loadingBarContainer" style="margin-top: 1rem; width: 100%; max-width: 600px;">
-    <div style="color: #0f0; margin-bottom: 0.3rem;">PowerFart Technologies ® Loading</div>
-    <div id="loadingBar" style="
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    #bootScreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: black;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 1.1rem;
+      padding: 1rem;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      user-select: none;
+    }
+
+    #loadingBarContainer {
+      margin-top: 1rem;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    #loadingBar {
       width: 0%;
       height: 12px;
       background: #0f0;
       border-radius: 6px;
       transition: width 0.1s linear;
-    "></div>
+    }
+
+    #cursor {
+      margin-left: 2px;
+      width: 10px;
+      height: 20px;
+      background: #0f0;
+      animation: blink 1s steps(2, start) infinite;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Boot Screen -->
+  <div id="bootScreen">
+    <div id="bootText">
+
+                                                                                                                                     
+
+      ,----, 
+      ,-.----.       ,----..                                                                                 ,/   .`| 
+      \    /  \     /   /   \             .---.    ,---,.,-.----.       ,---,.   ,---,       ,-.----.      ,`   .'  : 
+      |   :    \   /   .     :           /. ./|  ,'  .' |\    /  \    ,'  .' |  '  .' \      \    /  \   ;    ;     / 
+      |   |  .\ : .   /   ;.  \      .--'.  ' ;,---.'   |;   :    \ ,---.'   | /  ;    '.    ;   :    \.'___,/    ,'  
+      .   :  |: |.   ;   /  ` ;     /__./ \ : ||   |   .'|   | .\ : |   |   .':  :       \   |   | .\ :|    :     |   
+      |   |   \ :;   |  ; \ ; | .--'.  '   \' .:   :  |-,.   : |: | :   :  :  :  |   /\   \  .   : |: |;    |.';  ;   
+      |   : .   /|   :  | ; | '/___/ \ |    ' ':   |  ;/||   |  \ : :   |  |-,|  :  ' ;.   : |   |  \ :`----'  |  |   
+      ;   | |`-' .   |  ' ' ' :;   \  \;      :|   :   .'|   : .  / |   :  ;/||  |  ;/  \   \|   : .  /    '   :  ;   
+      |   | ;    '   ;  \; /  | \   ;  `      ||   |  |-,;   | |  \ |   |   .''  :  | \  \ ,';   | |  \    |   |  '   
+      :   ' |     \   \  ',  /   .   \    .\  ;'   :  ;/||   | ;\  \'   :  '  |  |  '  '--'  |   | ;\  \   '   :  |   
+      :   : :      ;   :    /     \   \   ' \ ||   |    \:   ' | \.'|   |  |  |  :  :        :   ' | \.'   ;   |.'    
+      |   | :       \   \ .'       :   '  |--" |   :   .':   : :-'  |   :  \  |  | ,'        :   : :-'     '---'      
+      `---'.|        `---`          \   \ ;    |   | ,'  |   |.'    |   | ,'  `--''          |   |.'                  
+        `---`                        '---"     `----'    `---'      `----'                   `---'                    
+                                                                                                                      
+          
+                                               '             '                                                                            
+      
+    </div>
+    <div id="loadingBarContainer">
+      <div style="color: #0f0; margin-bottom: 0.3rem;">PowerFart Technologies ® Loading</div>
+      <div id="loadingBar"></div>
+    </div>
+    <div id="cursor"></div>
   </div>
-  <div id="cursor" style="
-    margin-left: 2px;
-    width: 10px;
-    height: 20px;
-    background: #0f0;
-    animation: blink 1s steps(2, start) infinite;
-  "></div>
-</div>
 
-<style>
-  @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-  }
-</style>
+  <div class="fart-wrapper">
+    <button id="fartButton" aria-label="Launch PowerFart">
+      <pre style="font-size: 0.5em; margin: 0; white-space: pre-wrap; line-height: 1;">
+  ,----, 
+  ,-.----.       ,----..                                                                                 ,/   .`| 
+  \    /  \     /   /   \             .---.    ,---,.,-.----.       ,---,.   ,---,       ,-.----.      ,`   .'  : 
+  |   :    \   /   .     :           /. ./|  ,'  .' |\    /  \    ,'  .' |  '  .' \      \    /  \   ;    ;     / 
+  |   |  .\ : .   /   ;.  \      .--'.  ' ;,---.'   |;   :    \ ,---.'   | /  ;    '.    ;   :    \.'___,/    ,'  
+  .   :  |: |.   ;   /  ` ;     /__./ \ : ||   |   .'|   | .\ : |   |   .':  :       \   |   | .\ :|    :     |   
+  |   |   \ :;   |  ; \ ; | .--'.  '   \' .:   :  |-,.   : |: | :   :  :  :  |   /\   \  .   : |: |;    |.';  ;   
+  |   : .   /|   :  | ; | '/___/ \ |    ' ':   |  ;/||   |  \ : :   |  |-,|  :  ' ;.   : |   |  \ :`----'  |  |   
+  ;   | |`-' .   |  ' ' ' :;   \  \;      :|   :   .'|   : .  / |   :  ;/||  |  ;/  \   \|   : .  /    '   :  ;   
+  |   | ;    '   ;  \; /  | \   ;  `      ||   |  |-,;   | |  \ |   |   .''  :  | \  \ ,';   | |  \    |   |  '   
+  :   ' |     \   \  ',  /   .   \    .\  ;'   :  ;/||   | ;\  \'   :  '  |  |  '  '--'  |   | ;\  \   '   :  |   
+  :   : :      ;   :    /     \   \   ' \ ||   |    \:   ' | \.'|   |  |  |  :  :        :   ' | \.'   ;   |.'    
+  |   | :       \   \ .'       :   '  |--" |   :   .':   : :-'  |   :  \  |  | ,'        :   : :-'     '---'      
+  `---'.|        `---`          \   \ ;    |   | ,'  |   |.'    |   | ,'  `--''          |   |.'                  
+    `---`                        '---"     `----'    `---'      `----'                   `---'                    
+      </pre>
+  ────────────────────  
+  © 2025 PowerFart Technologies  
+  Created by Fartoshi Shartamoto  
+  First release: June 5, 2025  
+    </button>
+  </div>
+  
 
-<script>
-  const bootScreen = document.getElementById('bootScreen');
-  const bootText = document.getElementById('bootText');
-  const loadingBar = document.getElementById('loadingBar');
-  const cursor = document.getElementById('cursor');
+  <!-- Audio -->
+  <audio id="bootSound" preload="auto">
+    <source src="https://upload.wikimedia.org/wikipedia/en/1/1f/Windows_XP_Startup_sound.ogg" type="audio/ogg" />
+    <!-- You can host your own mp3 version if needed -->
+  </audio>
 
-  const bootMessages = [
-    "PowerFart OS v1.0.0 initializing...",
-    "Loading core modules...",
-    "Establishing Fartcoin blockchain link...",
-    "Verifying wallet balances...",
-    "Checking fart emission levels...",
-    "Calibrating gas sensors...",
-    "Ready. Enjoy the power of the fart!",
-    ""
-  ];
+  <!-- Boot Script -->
+  <script>
+    const bootScreen = document.getElementById('bootScreen');
+    const bootText = document.getElementById('bootText');
+    const loadingBar = document.getElementById('loadingBar');
+    const cursor = document.getElementById('cursor');
+    const bootSound = document.getElementById('bootSound');
 
-  let lineIndex = 0;
-  let skipBoot = false;
+    const bootMessages = [
+      "PowerFart OS v1.0.0 initializing...",
+      "Loading core modules...",
+      "Establishing Fartcoin blockchain link...",
+      "Verifying wallet balances...",
+      "Checking fart emission levels...",
+      "Calibrating gas sensors...",
+      "Ready. Enjoy the power of the fart!",
+      ""
+    ];
 
-  function typeLine(line, callback) {
-    let i = 0;
-    function typeChar() {
-      if(skipBoot) {
-        // If skipping, immediately append whole line
-        bootText.textContent += line + "\n";
-        callback();
+    let lineIndex = 0;
+    let skipBoot = false;
+
+    function typeLine(line, callback) {
+      let i = 0;
+      function typeChar() {
+        if (skipBoot) {
+          bootText.textContent += line + "\n";
+          callback();
+          return;
+        }
+        if (i < line.length) {
+          bootText.textContent += line.charAt(i);
+          i++;
+          setTimeout(typeChar, 40);
+        } else {
+          bootText.textContent += "\n";
+          callback();
+        }
+      }
+      typeChar();
+    }
+
+    function nextLine() {
+      if (skipBoot) {
+        finishBoot();
         return;
       }
-      if(i < line.length) {
-        bootText.textContent += line.charAt(i);
-        i++;
-        setTimeout(typeChar, 40); // typing speed (ms)
+      if (lineIndex < bootMessages.length) {
+        const progress = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
+        loadingBar.style.width = progress + '%';
+        typeLine(bootMessages[lineIndex], () => {
+          lineIndex++;
+          setTimeout(nextLine, 200);
+        });
       } else {
-        bootText.textContent += "\n";
-        callback();
+        finishBoot();
       }
     }
-    typeChar();
-  }
 
-  function nextLine() {
-    if(skipBoot) {
-      finishBoot();
-      return;
+    function finishBoot() {
+      loadingBar.style.width = '100%';
+      cursor.style.display = 'none';
+      bootSound.play();
+      bootScreen.style.transition = "opacity 1.5s ease";
+      bootScreen.style.opacity = 0;
+      setTimeout(() => {
+        bootScreen.style.display = "none";
+      }, 1600);
     }
-    if(lineIndex < bootMessages.length) {
-      // Update loading bar progress
-      let progressPercent = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
-      loadingBar.style.width = progressPercent + '%';
 
-      typeLine(bootMessages[lineIndex], () => {
-        lineIndex++;
-        setTimeout(nextLine, 200); // delay between lines
-      });
-    } else {
-      finishBoot();
-    }
-  }
+    bootScreen.addEventListener('click', () => {
+      if (!skipBoot) {
+        skipBoot = true;
+        finishBoot();
+      }
+    });
 
-  function finishBoot() {
-    loadingBar.style.width = '100%';
-    cursor.style.display = 'none';
-    bootScreen.style.transition = "opacity 1.5s ease";
-    bootScreen.style.opacity = 0;
-    setTimeout(() => {
-      bootScreen.style.display = "none";
-    }, 1600);
-  }
+    window.addEventListener('load', () => {
+      nextLine();
+    });
+  </script>
+</body>
+</html>
 
-  // Skip on click anywhere on boot screen
-  bootScreen.addEventListener('click', () => {
-    if(!skipBoot) {
-      skipBoot = true;
-      finishBoot();
-    }
-  });
-
-  window.addEventListener('load', () => {
-    nextLine();
-  });
-</script>
-
-
-<div class="fart-wrapper">
-  <button id="fartButton" aria-label="Launch PowerFart">
-PowerFart™ v4.2.0  
-────────────────────  
-© 2025 PowerFart Technologies  
-Created by Fartoshi Shartamoto  
-First release: June 5, 2025  
-  </button>
-</div>
 
   <!-- Contract Address (click to copy with fart) -->
   <pre id="contractAddress" title="Click to copy"><code>
