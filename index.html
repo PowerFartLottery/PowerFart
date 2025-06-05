@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PowerFart</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet" />
   <style>
     body {
+
+      
       margin: 0;
       font-family: 'Fira Code', monospace;
       background-color: #0d0d0d;
@@ -17,23 +20,39 @@
       min-height: 100vh;
       padding: 2rem;
     }
-    /* Make the ASCII art a button style */
+
+    .fart-wrapper {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
     #fartButton {
       font-size: 1em;
-      color: #ff5cc9;
+      color: #ff9100;
       white-space: pre;
       line-height: 1.2;
-      background: none;
+      background-color: #1f1e1e;
       border: none;
+      border-radius: 12px;
       cursor: pointer;
       font-family: 'Fira Code', monospace;
       user-select: none;
-      padding: 0;
-      margin-bottom: 1em;
+      padding: 1rem 2rem;
+      transition: background-color 0.3s;
+      width: 100%;
     }
+
+    #fartButton:hover {
+      background-color: #3b3b3b;
+    }
+
     #fartButton:focus {
       outline: 2px solid #ff5cc9;
     }
+
     pre {
       background: #1a1a1a;
       color: #c3f9d2;
@@ -43,17 +62,21 @@
       width: 100%;
       overflow-x: auto;
       font-size: 0.95em;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
     }
+
+    pre:hover {
+      background-color: #333;
+    }
+
     .keyword { color: #ff9d00; }
     .function { color: #00d0ff; }
     .comment { color: #888; font-style: italic; }
     .string { color: #c6f0ff; }
     .number { color: #ffc600; }
-    .footer {
-      margin-top: 2em;
-      font-size: 0.9em;
-      color: #555;
-    }
+
     .section {
       margin-top: 2rem;
       background: #141414;
@@ -62,23 +85,28 @@
       width: 100%;
       max-width: 800px;
     }
+
     h2 {
       margin-bottom: 0.5rem;
       color: #f98f6f;
     }
+
     #countdown {
-      font-size: 2rem;
+      font-size: 1.25rem; /* reduced from 2rem */
       font-weight: bold;
       color: #ffcc00;
     }
+
     #jackpot {
-      font-size: 1.5rem;
+      font-size: 1.1rem; /* reduced from 1.5rem */
       margin-bottom: 1rem;
     }
+
     #winners {
       list-style: none;
       padding-left: 0;
     }
+
     #winners li {
       background: #222;
       padding: 0.5em;
@@ -86,27 +114,180 @@
       border-radius: 4px;
       color: #8ef6c1;
     }
+
     #winners a {
       color: #8ef6c1;
       text-decoration: none;
     }
+
     #winners a:hover {
       text-decoration: underline;
     }
+
+    .fart-cloud {
+      position: absolute;
+      font-size: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: fartPoof 1s ease-out forwards;
+      pointer-events: none;
+      z-index: 0;
+      color: #ff5cc9;
+      user-select: none;
+    }
+
+    @keyframes fartPoof {
+      0% { bottom: 80px; opacity: 1; }
+      100% { bottom: 200px; opacity: 0; }
+    }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <button id="fartButton" aria-label="Play fart sound">
+
+  <div id="bootScreen" style="
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: black;
+  color: #0f0;
+  font-family: monospace;
+  font-size: 1.1rem;
+  padding: 1rem;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  user-select: none;
+">
+  <div id="bootText"></div>
+  <div id="loadingBarContainer" style="margin-top: 1rem; width: 100%; max-width: 600px;">
+    <div style="color: #0f0; margin-bottom: 0.3rem;">PowerFart Technologies ® Loading</div>
+    <div id="loadingBar" style="
+      width: 0%;
+      height: 12px;
+      background: #0f0;
+      border-radius: 6px;
+      transition: width 0.1s linear;
+    "></div>
+  </div>
+  <div id="cursor" style="
+    margin-left: 2px;
+    width: 10px;
+    height: 20px;
+    background: #0f0;
+    animation: blink 1s steps(2, start) infinite;
+  "></div>
+</div>
+
+<style>
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+</style>
+
+<script>
+  const bootScreen = document.getElementById('bootScreen');
+  const bootText = document.getElementById('bootText');
+  const loadingBar = document.getElementById('loadingBar');
+  const cursor = document.getElementById('cursor');
+
+  const bootMessages = [
+    "PowerFart OS v1.0.0 initializing...",
+    "Loading core modules...",
+    "Establishing Fartcoin blockchain link...",
+    "Verifying wallet balances...",
+    "Checking fart emission levels...",
+    "Calibrating gas sensors...",
+    "Ready. Enjoy the power of the fart!",
+    ""
+  ];
+
+  let lineIndex = 0;
+  let skipBoot = false;
+
+  function typeLine(line, callback) {
+    let i = 0;
+    function typeChar() {
+      if(skipBoot) {
+        // If skipping, immediately append whole line
+        bootText.textContent += line + "\n";
+        callback();
+        return;
+      }
+      if(i < line.length) {
+        bootText.textContent += line.charAt(i);
+        i++;
+        setTimeout(typeChar, 40); // typing speed (ms)
+      } else {
+        bootText.textContent += "\n";
+        callback();
+      }
+    }
+    typeChar();
+  }
+
+  function nextLine() {
+    if(skipBoot) {
+      finishBoot();
+      return;
+    }
+    if(lineIndex < bootMessages.length) {
+      // Update loading bar progress
+      let progressPercent = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
+      loadingBar.style.width = progressPercent + '%';
+
+      typeLine(bootMessages[lineIndex], () => {
+        lineIndex++;
+        setTimeout(nextLine, 200); // delay between lines
+      });
+    } else {
+      finishBoot();
+    }
+  }
+
+  function finishBoot() {
+    loadingBar.style.width = '100%';
+    cursor.style.display = 'none';
+    bootScreen.style.transition = "opacity 1.5s ease";
+    bootScreen.style.opacity = 0;
+    setTimeout(() => {
+      bootScreen.style.display = "none";
+    }, 1600);
+  }
+
+  // Skip on click anywhere on boot screen
+  bootScreen.addEventListener('click', () => {
+    if(!skipBoot) {
+      skipBoot = true;
+      finishBoot();
+    }
+  });
+
+  window.addEventListener('load', () => {
+    nextLine();
+  });
+</script>
+
+
+  <div class="fart-wrapper">
+    <button id="fartButton" aria-label="Play fart sound">
  ____   _____        _______ ____  _____ _    ____ _____ 
 |  _ \ / _ \ \      / / ____|  _ \|  ___/ \  |  _ \_   _|
 | |_) | | | \ \ /\ / /|  _| | |_) | |_ / _ \ | |_) || |  
 |  __/| |_| |\ V  V / | |___|  _ <|  _/ ___ \|  _ < | |  
 |_|    \___/  \_/\_/  |_____|_| \_\_|/_/   \_\_| \_\|_|  
-  </button>
+    </button>
+  </div>
 
-  <!-- Audio element for fart sound -->
-  <audio id="fartAudio" src="fart.mp3" preload="auto"></audio>
+  <!-- Contract Address (click to copy with fart) -->
+  <pre id="contractAddress" title="Click to copy"><code>
+<span class="comment">// Contract Address:</span>
+<span class="string">0xF4r7c0in69d00d00d420BeepBoop1337</span>
+</code></pre>
+
+  <audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
 
   <pre><code><span class="comment">/* PowerFart Lottery Logic */</span>
 
@@ -132,88 +313,63 @@
 <span class="comment">// and get Fartcoin directly in your wallet.</span>
 
 </code></pre>
-<audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
 
-<style>
-  #fartButton {
-    background-color: #1f1e1e;
-    color: rgb(255, 153, 0);
-    font-size: 1.5rem;
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    margin-top: 2rem;
-    position: relative;
-    z-index: 1;
-  }
-  #fartButton:hover {
-    background-color: #8ef6c1;
-  }
-  .fart-cloud {
-    position: absolute;
-    font-size: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    animation: fartPoof 1s ease-out forwards;
-    pointer-events: none;
-    z-index: 0;
-    color: #ff5cc9;
-    user-select: none;
-  }
-  @keyframes fartPoof {
-    0% { bottom: 80px; opacity: 1; }
-    100% { bottom: 200px; opacity: 0; }
-  }
-</style>
+  <pre><code><span class="comment">// Countdown to next winner</span>
+  <span class="keyword">let</span> <span class="function">nextWinnerIn</span> = <span class="string">"</span><span id="countdown" class="string">--:--</span><span class="string">"</span>;
+  </code></pre>
 
-<script>
-  const fartButton = document.getElementById('fartButton');
-  const fartSound = document.getElementById('fartSound');
+  <pre><code><span class="comment">// Current Pool Prize (Fartcoin)</span>
+  <span class="keyword">const</span> <span class="function">jackpot</span> = <span class="string">"</span><span id="jackpot" class="string">Loading...</span><span class="string">"</span>;
+  </code></pre>
 
-  fartButton.addEventListener('click', () => {
-    fartSound.currentTime = 0;
-    fartSound.play();
+  <pre><code><span class="comment">// Previous Winners</span>
+  <span class="keyword">const</span> <span class="function">winners</span> = [
+    <span id="winners">
+      <span class="string">"Loading..."</span>
+    </span>
+  ];
+  </code></pre>
 
-    const fartCloud = document.createElement('div');
-    fartCloud.classList.add('fart-cloud');
-    fartCloud.textContent = '💨💥💨';
+  <script>
+    const fartButton = document.getElementById('fartButton');
+    const fartSound = document.getElementById('fartSound');
 
-    const rect = fartButton.getBoundingClientRect();
-    fartCloud.style.left = (rect.left + rect.width / 2) + 'px';
-    fartCloud.style.bottom = '80px';
-    fartCloud.style.position = 'fixed';
+    // Fart on button click
+    fartButton.addEventListener('click', () => {
+      fartSound.currentTime = 0;
+      fartSound.play();
 
-    document.body.appendChild(fartCloud);
+      const fartCloud = document.createElement('div');
+      fartCloud.classList.add('fart-cloud');
+      fartCloud.textContent = '💨💥💨';
 
-    fartCloud.addEventListener('animationend', () => {
-      fartCloud.remove();
+      const rect = fartButton.getBoundingClientRect();
+      fartCloud.style.left = (rect.left + rect.width / 2) + 'px';
+      fartCloud.style.bottom = '80px';
+      fartCloud.style.position = 'fixed';
+
+      document.body.appendChild(fartCloud);
+
+      fartCloud.addEventListener('animationend', () => {
+        fartCloud.remove();
+      });
     });
-  });
 
-</script>
+    // Fart & copy contract address
+    const caPre = document.getElementById('contractAddress');
+    caPre.addEventListener('click', () => {
+      const codeLines = caPre.innerText.trim().split('\n');
+      const address = codeLines[codeLines.length - 1].trim();
+      navigator.clipboard.writeText(address).then(() => {
+        fartSound.currentTime = 0;
+        fartSound.play();
+      });
+    });
+  </script>
+
 </body>
 </html>
 
-  <div class="section">
-    <h2>🎯 Next Winner In:</h2>
-    <div id="countdown">--:--</div>
-  </div>
-
-  <div class="section">
-    <h2>💰 Current Pool Prize (Fartcoin):</h2>
-    <div id="jackpot">Loading...</div>
-  </div>
-
-  <div class="section">
-    <h2>🏆 Winners List</h2>
-    <ul id="winners">
-      <li>Loading...</li>
-    </ul>
-  </div>
-
-  <div class="footer">Made with 💻 on Solana</div>
 
 <script>
   const HELIUS_API_KEY = "c698448b-867d-4b89-8d94-86c6dd939233";
