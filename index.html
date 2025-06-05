@@ -286,3 +286,179 @@
 <span class="comment">// Contract Address:</span>
 <span class="string">0xF4r7c0in69d00d00d420BeepBoop1337</span>
 </code></pre>
+
+  <audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
+
+  <pre><code><span class="comment">/* PowerFart Lottery Logic */</span>
+
+<span class="comment">// Eligibility Check</span>
+<span class="keyword">function</span> <span class="function">eligibility</span>(wallet) {
+  <span class="keyword">return</span> wallet.balance >= <span class="number">10000</span>;
+}
+
+<span class="comment">/* Holding Duration Boost */</span>
+<span class="keyword">function</span> <span class="function">weightedChance</span>(wallet) {
+  <span class="keyword">return</span> wallet.holdTime * wallet.balance;
+}
+
+<span class="comment">// Winner Selection</span>
+<span class="keyword">const</span> <span class="function">powerFart</span> = () =&gt; {
+  <span class="keyword">const</span> winner = <span class="comment">/* randomHolder() */</span>;
+  <span class="keyword">if</span> (winner?.isLucky?.()) {
+    <span class="comment">/* airdropFartcoin(winner.address); */</span>
+  }
+}
+
+<span class="comment">// No tickets. No effort. Just hold PF tokens</span>
+<span class="comment">// and get Fartcoin directly in your wallet.</span>
+
+</code></pre>
+
+  <pre><code><span class="comment">// Countdown to next winner</span>
+  <span class="keyword">let</span> <span class="function">nextWinnerIn</span> = <span class="string">"</span><span id="countdown" class="string">--:--</span><span class="string">"</span>;
+  </code></pre>
+
+  <pre><code><span class="comment">// Current Pool Prize (Fartcoin)</span>
+  <span class="keyword">const</span> <span class="function">jackpot</span> = <span class="string">"</span><span id="jackpot" class="string">Loading...</span><span class="string">"</span>;
+  </code></pre>
+
+  <pre><code><span class="comment">// Previous Winners</span>
+  <span class="keyword">const</span> <span class="function">winners</span> = [
+    <span id="winners">
+      <span class="string">"Loading..."</span>
+    </span>
+  ];
+  </code></pre>
+
+  <script>
+    const fartButton = document.getElementById('fartButton');
+    const fartSound = document.getElementById('fartSound');
+
+    // Fart on button click
+    fartButton.addEventListener('click', () => {
+      fartSound.currentTime = 0;
+      fartSound.play();
+
+      const fartCloud = document.createElement('div');
+      fartCloud.classList.add('fart-cloud');
+      fartCloud.textContent = '💨💥💨';
+
+      const rect = fartButton.getBoundingClientRect();
+      fartCloud.style.left = (rect.left + rect.width / 2) + 'px';
+      fartCloud.style.bottom = '80px';
+      fartCloud.style.position = 'fixed';
+
+      document.body.appendChild(fartCloud);
+
+      fartCloud.addEventListener('animationend', () => {
+        fartCloud.remove();
+      });
+    });
+
+    // Fart & copy contract address
+    const caPre = document.getElementById('contractAddress');
+    caPre.addEventListener('click', () => {
+      const codeLines = caPre.innerText.trim().split('\n');
+      const address = codeLines[codeLines.length - 1].trim();
+      navigator.clipboard.writeText(address).then(() => {
+        fartSound.currentTime = 0;
+        fartSound.play();
+      });
+    });
+  </script>
+
+</body>
+</html>
+
+
+<script>
+  const HELIUS_API_KEY = "c698448b-867d-4b89-8d94-86c6dd939233";
+  const HELIUS_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+  const TEAM_WALLET = "GMRJUYGRa1z1ZpRMn7tDi9wBWVA9ZwxeXMXR58WQhniy";
+  const FARTCOIN_TOKEN = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump";
+  const FARTCOIN_DECIMALS = 6;
+
+  function updateCountdown() {
+    const countdownEl = document.getElementById('countdown');
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setMinutes(0, 0, 0);
+    nextHour.setHours(now.getHours() + 1);
+    const diff = nextHour.getTime() - now.getTime();
+
+    if (diff <= 0) {
+      countdownEl.textContent = "00:00";
+      return;
+    }
+
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+  async function fetchFartcoinBalance() {
+    try {
+      const res = await fetch(HELIUS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTokenAccountsByOwner",
+          params: [
+            TEAM_WALLET,
+            { mint: FARTCOIN_TOKEN },
+            { encoding: "jsonParsed" }
+          ]
+        })
+      });
+
+      const data = await res.json();
+      const tokenAccounts = data.result.value;
+
+      let totalAmount = 0n;
+      for (const account of tokenAccounts) {
+        const amountStr = account.account.data.parsed.info.tokenAmount.amount;
+        totalAmount += BigInt(amountStr);
+      }
+
+      const totalFartcoin = Number(totalAmount) / Math.pow(10, FARTCOIN_DECIMALS);
+      document.getElementById("jackpot").textContent = totalFartcoin.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + " FART";
+    } catch (err) {
+      console.error("Failed to fetch fartcoin balance:", err);
+      document.getElementById("jackpot").textContent = "Error loading balance";
+    }
+  }
+
+  function loadManualWinners() {
+    const winners = [
+      { address: "BASEDGOD", amount: 69420 },
+
+    ];
+
+    const winnersListEl = document.getElementById('winners');
+    winnersListEl.innerHTML = "";
+
+    if (winners.length === 0) {
+      winnersListEl.innerHTML = "<li>No winners yet</li>";
+      return;
+    }
+
+    for (const winner of winners) {
+      const li = document.createElement('li');
+      li.innerHTML = `<a href="https://solscan.io/account/${winner.address}" target="_blank">${winner.address}</a> - ${winner.amount.toFixed(2)} FART`;
+      winnersListEl.appendChild(li);
+    }
+  }
+
+  fetchFartcoinBalance();
+  loadManualWinners();
+</script>
+</body>
+</html>
