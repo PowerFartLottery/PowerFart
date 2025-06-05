@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PowerFart</title>
   <style>
     body {
@@ -13,16 +13,26 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
+      justify-content: flex-start;
+      min-height: 100vh;
       padding: 2rem;
     }
-    .logo {
+    /* Make the ASCII art a button style */
+    #fartButton {
       font-size: 1em;
-      margin-bottom: 1em;
       color: #ff5cc9;
       white-space: pre;
       line-height: 1.2;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Fira Code', monospace;
+      user-select: none;
+      padding: 0;
+      margin-bottom: 1em;
+    }
+    #fartButton:focus {
+      outline: 2px solid #ff5cc9;
     }
     pre {
       background: #1a1a1a;
@@ -44,23 +54,65 @@
       font-size: 0.9em;
       color: #555;
     }
+    .section {
+      margin-top: 2rem;
+      background: #141414;
+      padding: 1rem;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 800px;
+    }
+    h2 {
+      margin-bottom: 0.5rem;
+      color: #f98f6f;
+    }
+    #countdown {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ffcc00;
+    }
+    #jackpot {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    #winners {
+      list-style: none;
+      padding-left: 0;
+    }
+    #winners li {
+      background: #222;
+      padding: 0.5em;
+      margin-bottom: 0.25em;
+      border-radius: 4px;
+      color: #8ef6c1;
+    }
+    #winners a {
+      color: #8ef6c1;
+      text-decoration: none;
+    }
+    #winners a:hover {
+      text-decoration: underline;
+    }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <div class="logo">
-   ____   _____        _______ ____  _____ _    ____ _____ 
-  |  _ \ / _ \ \      / / ____|  _ \|  ___/ \  |  _ \_   _|
-  | |_) | | | \ \ /\ / /|  _| | |_) | |_ / _ \ | |_) || |  
-  |  __/| |_| |\ V  V / | |___|  _ <|  _/ ___ \|  _ < | |  
-  |_|    \___/  \_/\_/  |_____|_| \_\_|/_/   \_\_| \_\|_|  
-  </div>
+  <button id="fartButton" aria-label="Play fart sound">
+ ____   _____        _______ ____  _____ _    ____ _____ 
+|  _ \ / _ \ \      / / ____|  _ \|  ___/ \  |  _ \_   _|
+| |_) | | | \ \ /\ / /|  _| | |_) | |_ / _ \ | |_) || |  
+|  __/| |_| |\ V  V / | |___|  _ <|  _/ ___ \|  _ < | |  
+|_|    \___/  \_/\_/  |_____|_| \_\_|/_/   \_\_| \_\|_|  
+  </button>
+
+  <!-- Audio element for fart sound -->
+  <audio id="fartAudio" src="fart.mp3" preload="auto"></audio>
 
   <pre><code><span class="comment">/* PowerFart Lottery Logic */</span>
 
 <span class="comment">// Eligibility Check</span>
 <span class="keyword">function</span> <span class="function">eligibility</span>(wallet) {
-  <span class="keyword">return</span> wallet.balance &gt;= <span class="number">10000</span>;
+  <span class="keyword">return</span> wallet.balance >= <span class="number">10000</span>;
 }
 
 <span class="comment">/* Holding Duration Boost */</span>
@@ -70,16 +122,187 @@
 
 <span class="comment">// Winner Selection</span>
 <span class="keyword">const</span> <span class="function">powerFart</span> = () =&gt; {
-  <span class="keyword">const</span> winner = <span class="function">randomHolder</span>();
-  <span class="keyword">if</span> (winner.<span class="function">isLucky</span>()) {
-    <span class="function">airdropFartcoin</span>(winner.address);
+  <span class="keyword">const</span> winner = <span class="comment">/* randomHolder() */</span>;
+  <span class="keyword">if</span> (winner?.isLucky?.()) {
+    <span class="comment">/* airdropFartcoin(winner.address); */</span>
   }
 }
 
 <span class="comment">// No tickets. No effort. Just hold PF tokens</span>
 <span class="comment">// and get Fartcoin directly in your wallet.</span>
+
 </code></pre>
+<audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
+
+<style>
+  #fartButton {
+    background-color: #1f1e1e;
+    color: rgb(255, 153, 0);
+    font-size: 1.5rem;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+  #fartButton:hover {
+    background-color: #8ef6c1;
+  }
+  .fart-cloud {
+    position: absolute;
+    font-size: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: fartPoof 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 0;
+    color: #ff5cc9;
+    user-select: none;
+  }
+  @keyframes fartPoof {
+    0% { bottom: 80px; opacity: 1; }
+    100% { bottom: 200px; opacity: 0; }
+  }
+</style>
+
+<script>
+  const fartButton = document.getElementById('fartButton');
+  const fartSound = document.getElementById('fartSound');
+
+  fartButton.addEventListener('click', () => {
+    fartSound.currentTime = 0;
+    fartSound.play();
+
+    const fartCloud = document.createElement('div');
+    fartCloud.classList.add('fart-cloud');
+    fartCloud.textContent = '💨💥💨';
+
+    const rect = fartButton.getBoundingClientRect();
+    fartCloud.style.left = (rect.left + rect.width / 2) + 'px';
+    fartCloud.style.bottom = '80px';
+    fartCloud.style.position = 'fixed';
+
+    document.body.appendChild(fartCloud);
+
+    fartCloud.addEventListener('animationend', () => {
+      fartCloud.remove();
+    });
+  });
+
+</script>
+</body>
+</html>
+
+  <div class="section">
+    <h2>🎯 Next Winner In:</h2>
+    <div id="countdown">--:--</div>
+  </div>
+
+  <div class="section">
+    <h2>💰 Current Pool Prize (Fartcoin):</h2>
+    <div id="jackpot">Loading...</div>
+  </div>
+
+  <div class="section">
+    <h2>🏆 Winners List</h2>
+    <ul id="winners">
+      <li>Loading...</li>
+    </ul>
+  </div>
 
   <div class="footer">Made with 💻 on Solana</div>
+
+<script>
+  const HELIUS_API_KEY = "c698448b-867d-4b89-8d94-86c6dd939233";
+  const HELIUS_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+  const TEAM_WALLET = "GMRJUYGRa1z1ZpRMn7tDi9wBWVA9ZwxeXMXR58WQhniy";
+  const FARTCOIN_TOKEN = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump";
+  const FARTCOIN_DECIMALS = 6;
+
+  function updateCountdown() {
+    const countdownEl = document.getElementById('countdown');
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setMinutes(0, 0, 0);
+    nextHour.setHours(now.getHours() + 1);
+    const diff = nextHour.getTime() - now.getTime();
+
+    if (diff <= 0) {
+      countdownEl.textContent = "00:00";
+      return;
+    }
+
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+  async function fetchFartcoinBalance() {
+    try {
+      const res = await fetch(HELIUS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTokenAccountsByOwner",
+          params: [
+            TEAM_WALLET,
+            { mint: FARTCOIN_TOKEN },
+            { encoding: "jsonParsed" }
+          ]
+        })
+      });
+
+      const data = await res.json();
+      const tokenAccounts = data.result.value;
+
+      let totalAmount = 0n;
+      for (const account of tokenAccounts) {
+        const amountStr = account.account.data.parsed.info.tokenAmount.amount;
+        totalAmount += BigInt(amountStr);
+      }
+
+      const totalFartcoin = Number(totalAmount) / Math.pow(10, FARTCOIN_DECIMALS);
+      document.getElementById("jackpot").textContent = totalFartcoin.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + " FART";
+    } catch (err) {
+      console.error("Failed to fetch fartcoin balance:", err);
+      document.getElementById("jackpot").textContent = "Error loading balance";
+    }
+  }
+
+  function loadManualWinners() {
+    const winners = [
+      { address: "BASEDGOD", amount: 69420 },
+
+    ];
+
+    const winnersListEl = document.getElementById('winners');
+    winnersListEl.innerHTML = "";
+
+    if (winners.length === 0) {
+      winnersListEl.innerHTML = "<li>No winners yet</li>";
+      return;
+    }
+
+    for (const winner of winners) {
+      const li = document.createElement('li');
+      li.innerHTML = `<a href="https://solscan.io/account/${winner.address}" target="_blank">${winner.address}</a> - ${winner.amount.toFixed(2)} FART`;
+      winnersListEl.appendChild(li);
+    }
+  }
+
+  fetchFartcoinBalance();
+  loadManualWinners();
+</script>
 </body>
 </html>
