@@ -1,39 +1,25 @@
 // tracker.js
-// Automated Fartcoin Winner Tracker
+// Automated Fartcoin Winner Tracker (local + GitHub update)
 
-import fetch from 'node-fetch';
-import { writeFileSync } from 'fs';
-import { Octokit } from '@octokit/rest';
+const fetch = require('node-fetch');
+const fs = require('fs');
 
 // === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GIST_ID = process.env.GIST_ID; // ID of the winners.json Gist
-const GIST_FILENAME = 'winners.json';
-
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
-const MIN_AMOUNT = 10; // Minimum FART to qualify as a winner
+const MIN_AMOUNT = 10;
 const HELIUS_URL = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=20`;
 
-const octokit = new Octokit({ auth: GITHUB_TOKEN });
+const WINNERS_PATH = './winners.json';
 
 async function fetchExistingWinners() {
-  const gist = await octokit.gists.get({ gist_id: GIST_ID });
-  const content = gist.data.files[GIST_FILENAME].content;
-  return JSON.parse(content);
-}
-
-async function updateWinners(newWinners) {
-  const content = JSON.stringify(newWinners, null, 2);
-  await octokit.gists.update({
-    gist_id: GIST_ID,
-    files: {
-      [GIST_FILENAME]: { content },
-    },
-  });
-  console.log(`✅ Gist updated with ${newWinners.length} winners.`);
+  if (fs.existsSync(WINNERS_PATH)) {
+    const data = fs.readFileSync(WINNERS_PATH, 'utf-8');
+    return JSON.parse(data);
+  }
+  return [];
 }
 
 async function main() {
@@ -60,19 +46,21 @@ async function main() {
             address: transfer.toUserAccount,
             amount: parseFloat(amount.toFixed(2)),
             signature: tx.signature,
-            timestamp: Date.now(),
+            tx: `https://solscan.io/tx/${tx.signature}`,
+            timestamp: Date.now()
           });
         }
       }
     }
 
     if (updatedWinners.length !== existing.length) {
-      await updateWinners(updatedWinners.slice(0, 100)); // keep top 100
+      fs.writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
+      console.log(`✅ winners.json updated with ${updatedWinners.length - existing.length} new winners.`);
     } else {
       console.log('⏸ No new winners.');
     }
   } catch (err) {
-    console.error('❌ Error fetching transactions or updating winners:', err);
+    console.error('❌ Error updating winners:', err);
   }
 }
 
