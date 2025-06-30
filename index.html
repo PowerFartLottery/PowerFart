@@ -463,37 +463,25 @@ First release: June 5, 2025
     }
   }
 
-
-function loadManualWinners() {
-  const winners = [
-    { address: "AtoQ1Y6zm4NxNwie8jbrM4VjXVh6fQyqyajCKEyn5RPJ", amount: 1261.47 },
-    { address: "jjXczvExrj8ChL39PVwq54yNXFi86WKciCgvRuLdNda", amount: 1060.00 },
-    { address: "7h8CFdqynASZmFcVVEexLgPBmgTmvNF243bBAnryK8MS", amount: 1016.86 },
-    { address: "EKFxBzg8n4PbwTES5skQm2cKvxpr2g8skKYq6HKvfEWF", amount: 815.18 },
-    { address: "6SY1BdgfJkcoKKsu36bFFXJHYQB3kqpWQx2EgBD85gMo", amount: 440.92 },
-    { address: "Fus1BvxRyiMxSokafiDE21cJVS3GFCeasc3kWUBWgzi7", amount: 472.39 },
-    { address: "HLgkhbN966cCCrX9xDsJofmgmzbKDjh6Sodecaq14gfz", amount: 255.74 },
-    { address: "2yg76DQnzdLVc6zGp4GB3ankn66L1fZJuBcWaoo1TwRx", amount: 275.40 },
-  ];
-
-  
-    const winnersListEl = document.getElementById('winners');
-    winnersListEl.innerHTML = "";
-
-    if (winners.length === 0) {
-      winnersListEl.innerHTML = "<li>No winners yet</li>";
-      return;
+fetch('https://gist.githubusercontent.com/PowerFartLottery/705e19a1ed3b616ec338f77e4bd80dc7/raw/winners.json')
+  .then(res => res.json())
+  .then(data => {
+    const list = document.getElementById('winners');
+    list.innerHTML = '';
+    if (data.length === 0) {
+      list.innerHTML = '<li>No winners yet</li>';
+    } else {
+      data.forEach(w => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>`;
+        list.appendChild(li);
+      });
     }
-
-    for (const winner of winners) {
-      const li = document.createElement('li');
-      li.innerHTML = `<a href="https://solscan.io/account/${winner.address}" target="_blank">${winner.address}</a> - ${winner.amount.toFixed(2)} FART`;
-      winnersListEl.appendChild(li);
-    }
-  }
-
-  fetchFartcoinBalance();
-  loadManualWinners();
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById('winners').innerHTML = '<li>Error loading winners</li>';
+  });
 
 </script>
 </body>
