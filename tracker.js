@@ -53,4 +53,17 @@ async function main() {
       }
     }
 
+    if (updatedWinners.length > existing.length) {
+      const top100 = updatedWinners.slice(0, 100);
+      fs.writeFileSync(WINNERS_PATH, JSON.stringify(top100, null, 2));
+      console.log(`✅ Updated winners.json with ${top100.length} entries.`);
+    } else {
+      console.log('⏸ No new winners found.');
+    }
+
+  } catch (err) {
+    console.error('❌ Error during fetch or write:', err);
+  }
+}
+
 main();
