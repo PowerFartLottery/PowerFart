@@ -53,15 +53,4 @@ async function main() {
       }
     }
 
-    if (updatedWinners.length !== existing.length) {
-      fs.writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
-      console.log(`✅ winners.json updated with ${updatedWinners.length - existing.length} new winners.`);
-    } else {
-      console.log('⏸ No new winners.');
-    }
-  } catch (err) {
-    console.error('❌ Error updating winners:', err);
-  }
-}
-
 main();
