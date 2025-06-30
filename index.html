@@ -470,26 +470,26 @@ First release: June 5, 2025
   </ul>
 </div>
 
-    // Load Winners from GitHub Gist JSON
-    fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
-      .then(res => res.json())
-      .then(data => {
-        const list = document.getElementById('winners');
-        list.innerHTML = '';
-        if (data.length === 0) {
-          list.innerHTML = '<li>No winners yet</li>';
-        } else {
-          data.forEach(w => {
-            const li = document.createElement('li');
-            li.innerHTML = `<a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${Number(w.amount).toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>`;
-            list.appendChild(li);
-          });
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        document.getElementById('winners').innerHTML = '<li>Error loading winners</li>';
+fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
+  .then(res => res.json())
+  .then(data => {
+    const list = document.getElementById('winners');
+    list.innerHTML = '';
+    if (data.length === 0) {
+      list.innerHTML = '<li>No winners yet</li>';
+    } else {
+      data.forEach(w => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>`;
+        list.appendChild(li);
       });
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById('winners').innerHTML = '<li>Error loading winners</li>';
+  });
+
 </script>
 </body>
 </html>
