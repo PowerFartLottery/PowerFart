@@ -35,16 +35,31 @@ async function main() {
     const updatedWinners = [...existing];
 
     for (const tx of transactions) {
-      if (knownSignatures.has(tx.signature)) continue;
+      console.log(`🔍 TX: ${tx.signature}`);
+      if (knownSignatures.has(tx.signature)) {
+        console.log(`   ⏭ Already recorded`);
+        continue;
+      }
 
       const tokenTransfers = tx.tokenTransfers || [];
+
+      if (!tokenTransfers.length) {
+        console.log("   ⚠️  No token transfers");
+        continue;
+      }
+
       for (const transfer of tokenTransfers) {
         const isFart = transfer.mint === FARTCOIN_MINT;
         const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;
-        const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+        const rawAmount = transfer.tokenAmount.amount;
+        const amount = Number(rawAmount) / Math.pow(10, DECIMALS);
+
+        console.log(`   ➤ Mint: ${transfer.mint}`);
+        console.log(`     To: ${transfer.toUserAccount}`);
+        console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
 
         if (isFart && toOtherWallet && amount >= MIN_AMOUNT) {
-          console.log(`🎯 New winner: ${transfer.toUserAccount} (${amount} FART)`);
+          console.log(`   ✅ WINNER! ${transfer.toUserAccount} gets ${amount} FART`);
           updatedWinners.unshift({
             address: transfer.toUserAccount,
             amount: parseFloat(amount.toFixed(2)),
@@ -52,13 +67,16 @@ async function main() {
             tx: `https://solscan.io/tx/${tx.signature}`,
             timestamp: Date.now()
           });
+        } else {
+          console.log("   🚫 Not eligible");
         }
       }
     }
 
     if (updatedWinners.length !== existing.length) {
-      writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
-      console.log(`✅ Saved ${updatedWinners.length} total winners.`);
+      const latest = updatedWinners.slice(0, 100);
+      writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));
+      console.log(`✅ Saved ${latest.length} total winners.`);
     } else {
       console.log('⏸ No new winners to add.');
     }
