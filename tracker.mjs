@@ -1,3 +1,6 @@
+// tracker.mjs
+// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
+
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
@@ -31,7 +34,6 @@ async function main() {
     const knownSignatures = new Set(existing.map(w => w.signature));
     const updatedWinners = [...existing];
 
-    // Process each transaction
     for (const tx of transactions) {
       console.log(`🔍 TX: ${tx.signature}`);
       if (knownSignatures.has(tx.signature)) {
@@ -45,21 +47,25 @@ async function main() {
         continue;
       }
 
-      // Process each token transfer in the transaction
       for (const transfer of tokenTransfers) {
         const isFart = transfer.mint === FARTCOIN_MINT;
-        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;
+        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;  // Ensure it's from distribution wallet
+        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;  // Ensure it's going to another wallet
 
         // Direct amount without unnecessary division
         const rawAmount = transfer.tokenAmount;
         const amount = Number(rawAmount);
 
-        // Debug log for each transaction
         console.log(`   ➤ Mint: ${transfer.mint}`);
         console.log(`     From: ${transfer.fromUserAccount}`);
         console.log(`     To: ${transfer.toUserAccount}`);
         console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
+        
+        // Debugging the conditions
+        console.log(`     isFart: ${isFart}`);
+        console.log(`     fromDistributionWallet: ${fromDistributionWallet}`);
+        console.log(`     toOtherWallet: ${toOtherWallet}`);
+        console.log(`     amount >= MIN_AMOUNT: ${amount >= MIN_AMOUNT}`);
 
         // Only process if:
         // 1. Transfer is from the distribution wallet
@@ -80,15 +86,13 @@ async function main() {
       }
     }
 
-    // Save the updated winners list if there are any new winners
     if (updatedWinners.length !== existing.length) {
       const latest = updatedWinners.slice(0, 100);
-      writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));  // Fixed the parentheses here
+      writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));
       console.log(`✅ Saved ${latest.length} total winners.`);
     } else {
       console.log('⏸ No new winners to add.');
     }
-
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
