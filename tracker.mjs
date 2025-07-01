@@ -2,7 +2,6 @@ import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // === CONFIG ===
-const HELIUS_API_URL = 'https://mainnet.helius-rpc.com/';
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
@@ -10,15 +9,8 @@ const DECIMALS = 6;
 const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 
-// === RPC Request Setup ===
-const jsonRpcBody = {
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "getSignaturesForAddress",
-  "params": [DISTRIBUTION_WALLET, { "limit": 20 }]
-};
-
-async function fetchExistingWinners() {
+// === Fetch existing winners ===
+function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
     const data = readFileSync(WINNERS_PATH, 'utf-8');
     return JSON.parse(data);
@@ -26,83 +18,80 @@ async function fetchExistingWinners() {
   return [];
 }
 
+// === Fetch enhanced transactions from Helius ===
 async function fetchTransactions() {
+  const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=20`;
+
   try {
-    const res = await fetch(HELIUS_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${HELIUS_API_KEY}`,
-      },
-      body: JSON.stringify(jsonRpcBody),
-    });
-    
+    const res = await fetch(url);
     const data = await res.json();
-    
-    if (data.result) {
-      return data.result;  // Contains the list of transaction signatures
+
+    if (!Array.isArray(data)) {
+      console.error('Invalid response from Helius API:', data);
+      return [];
     }
-    console.error('Error fetching transactions:', data.error);
-    return [];
+
+    return data;
   } catch (err) {
-    console.error('Error in RPC request:', err);
+    console.error('Error fetching enhanced transactions:', err);
     return [];
   }
 }
 
+// === Main logic ===
 async function main() {
   try {
     const transactions = await fetchTransactions();
-
     console.log(`📦 Fetched ${transactions.length} transactions from Helius`);
 
-    const existing = await fetchExistingWinners();
+    const existing = fetchExistingWinners();
     const knownSignatures = new Set(existing.map(w => w.signature));
     const updatedWinners = [...existing];
 
     for (const tx of transactions) {
-      console.log(`🔍 TX: ${tx.signature}`);
+      const { signature } = tx;
+      console.log(`🔍 TX: ${signature}`);
 
-      if (knownSignatures.has(tx.signature)) {
+      if (knownSignatures.has(signature)) {
         console.log(`   ⏭ Already recorded`);
         continue;
       }
 
-      const tokenTransfers = tx.tokenTransfers || [];
-      if (!tokenTransfers.length) {
-        console.log("   ⚠️  No token transfers");
+      const transfers = tx.tokenTransfers?.filter(t => t.mint === FARTCOIN_MINT) || [];
+
+      if (!transfers.length) {
+        console.log("   ⚠️  No FART token transfers");
         continue;
       }
 
-      for (const transfer of tokenTransfers) {
+      for (const transfer of transfers) {
+        const {
+          fromUserAccount,
+          toUserAccount,
+          tokenAmount
+        } = transfer;
+
         const isFart = transfer.mint === FARTCOIN_MINT;
-        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;  // Ensure it's from distribution wallet
-        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;  // Ensure it's going to another wallet
+        const fromDistributionWallet = fromUserAccount === DISTRIBUTION_WALLET;
+        const toOtherWallet = toUserAccount !== DISTRIBUTION_WALLET;
+        const amount = Number(tokenAmount);
 
-        // Direct amount without unnecessary division
-        const rawAmount = transfer.tokenAmount; // Direct value without dividing
-        const amount = Number(rawAmount); // No division needed if it’s already in the correct format
-
-        console.log(`   ➤ Mint: ${transfer.mint}`);
-        console.log(`     From: ${transfer.fromUserAccount}`);
-        console.log(`     To: ${transfer.toUserAccount}`);
-        console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
+        console.log(`   ➤ From: ${fromUserAccount}`);
+        console.log(`     To: ${toUserAccount}`);
+        console.log(`     Amount: ${amount} FART`);
         console.log(`     isFart: ${isFart}`);
         console.log(`     fromDistributionWallet: ${fromDistributionWallet}`);
         console.log(`     toOtherWallet: ${toOtherWallet}`);
         console.log(`     amount >= MIN_AMOUNT: ${amount >= MIN_AMOUNT}`);
 
-        // Only proceed if:
-        // 1. Transfer is from the distribution wallet
-        // 2. Transfer is to a different wallet (not the distribution wallet)
-        // 3. The amount is greater than or equal to MIN_AMOUNT
         if (isFart && fromDistributionWallet && toOtherWallet && amount >= MIN_AMOUNT) {
-          console.log(`   ✅ WINNER! ${transfer.toUserAccount} gets ${amount} FART`);
+          console.log(`   ✅ WINNER! ${toUserAccount} gets ${amount} FART`);
+
           updatedWinners.unshift({
-            address: transfer.toUserAccount,
+            address: toUserAccount,
             amount: parseFloat(amount.toFixed(2)),
-            signature: tx.signature,
-            tx: `https://solscan.io/tx/${tx.signature}`,
+            signature,
+            tx: `https://solscan.io/tx/${signature}`,
             timestamp: Date.now()
           });
         } else {
@@ -123,5 +112,5 @@ async function main() {
   }
 }
 
-// Call main function
+// Start the tracker
 main();
