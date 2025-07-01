@@ -1,12 +1,1 @@
-[
-  {
-    "address": "SolanaWalletAddress1",
-    "amount": 10.5,
-    "tx": "https://solscan.io/tx/transactionId1"
-  },
-  {
-    "address": "SolanaWalletAddress2",
-    "amount": 5.2,
-    "tx": "https://solscan.io/tx/transactionId2"
-  }
-]
+[]
