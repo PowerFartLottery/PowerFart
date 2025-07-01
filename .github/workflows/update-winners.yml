@@ -19,9 +19,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Run tracker
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
