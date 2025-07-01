@@ -23,7 +23,16 @@ async function fetchTransactionSignatures(walletAddress, limit = 1000) {
     });
 
     const data = await response.json();
-    return data.result;
+    
+    // Log the response to check its structure
+    console.log("Response from getConfirmedSignaturesForAddress2:", data);
+
+    if (data.result) {
+      return data.result;
+    } else {
+      console.error('No result field in the response:', data);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching transaction signatures:', error);
     return [];
@@ -47,6 +56,10 @@ async function fetchTransactionDetails(signature) {
     });
 
     const data = await response.json();
+    
+    // Log the response to check the transaction details structure
+    console.log(`Response for transaction ${signature}:`, data);
+
     return data.result;
   } catch (error) {
     console.error('Error fetching transaction details for signature', signature, error);
@@ -61,7 +74,7 @@ async function getAllPastTransactions(walletAddress) {
   // Fetch transaction signatures (up to the limit)
   const signatures = await fetchTransactionSignatures(walletAddress);
 
-  if (signatures.length === 0) {
+  if (!signatures || signatures.length === 0) {
     console.log('No transactions found for this wallet.');
     return;
   }
