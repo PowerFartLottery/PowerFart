@@ -1,102 +1,79 @@
+// tracker.mjs
+// Automated Fartcoin Winner Tracker (ESM version using Helius Transfers API)
+
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // === CONFIG ===
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+const HELIUS_API_KEY    = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
-const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
-const MIN_AMOUNT = 10;
-const WINNERS_PATH = './winners.json';
-const TX_FETCH_LIMIT = 20;
+const FARTCOIN_MINT     = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
+const MIN_AMOUNT        = 10;       // Minimum FART to qualify
+const WINNERS_PATH      = './winners.json';
+const PAGE_LIMIT        = 20;       // How many transfers per page
 
-// === Fetch existing winners ===
-function fetchExistingWinners() {
+// Load existing winners
+function loadExisting() {
   if (existsSync(WINNERS_PATH)) {
-    const data = readFileSync(WINNERS_PATH, 'utf-8');
-    return JSON.parse(data);
+    return JSON.parse(readFileSync(WINNERS_PATH, 'utf8'));
   }
   return [];
 }
 
-// === Fetch enhanced transactions from Helius ===
-async function fetchTransactions(beforeSignature = null) {
-  const baseUrl = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions`;
-  const url = new URL(baseUrl);
-  url.searchParams.append('api-key', HELIUS_API_KEY);
-  url.searchParams.append('limit', TX_FETCH_LIMIT);
-  if (beforeSignature) url.searchParams.append('before', beforeSignature);
-
-  try {
-    const res = await fetch(url.toString());
-    const data = await res.json();
-
-    if (!Array.isArray(data)) {
-      console.error('Invalid response from Helius API:', data);
-      return [];
-    }
-
-    return data;
-  } catch (err) {
-    console.error('Error fetching enhanced transactions:', err);
-    return [];
-  }
+// Save winners (keep latest 100)
+function saveWinners(winners) {
+  writeFileSync(WINNERS_PATH, JSON.stringify(winners.slice(0,100), null, 2));
 }
 
-// === Main logic ===
+// Fetch outgoing FART transfers from distro wallet
+async function fetchOutgoingTransfers(beforeSignature = null) {
+  const url = new URL('https://api.helius.xyz/v0/transfers');
+  url.searchParams.set('api-key', HELIUS_API_KEY);
+  url.searchParams.set('account', DISTRIBUTION_WALLET);
+  url.searchParams.set('mint', FARTCOIN_MINT);
+  url.searchParams.set('direction', 'outgoing');
+  url.searchParams.set('limit', PAGE_LIMIT);
+  if (beforeSignature) url.searchParams.set('before', beforeSignature);
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Helius responded ${res.status}`);
+  return await res.json();  // Array of { signature, to, amount, slot, ... }
+}
+
 async function main() {
   try {
-    const existing = fetchExistingWinners();
-    const knownSignatures = new Set(existing.map(w => w.signature));
-    const updatedWinners = [...existing];
+    const existing = loadExisting();
+    const seen = new Set(existing.map(w => w.signature));
+    let updated = [...existing];
 
-    let transactions = await fetchTransactions();
-    console.log(`📦 Fetched ${transactions.length} transactions from Helius`);
+    // Single page fetch (you can loop with before= to paginate older)
+    const transfers = await fetchOutgoingTransfers();
+    console.log(`📦 ${transfers.length} outgoing FART transfers fetched`);
 
-    for (const tx of transactions) {
-      const { signature } = tx;
-      if (knownSignatures.has(signature)) {
-        console.log(`⏭ Already recorded: ${signature}`);
-        continue;
-      }
+    for (const t of transfers) {
+      if (seen.has(t.signature)) continue;  // skip already-recorded
 
-      const transfers = (tx.tokenTransfers || []).filter(t =>
-        t.mint === FARTCOIN_MINT &&
-        t.fromUserAccount === DISTRIBUTION_WALLET &&
-        t.toUserAccount !== DISTRIBUTION_WALLET
-      );
-
-      if (transfers.length === 0) {
-        console.log(`🔍 TX: ${signature} → ❌ No valid outgoing FART transfers`);
-        continue;
-      }
-
-      for (const transfer of transfers) {
-        const amount = Number(transfer.tokenAmount);
-
-        if (amount >= MIN_AMOUNT) {
-          console.log(`🎉 WINNER → ${transfer.toUserAccount} gets ${amount} FART`);
-          updatedWinners.unshift({
-            address: transfer.toUserAccount,
-            amount: parseFloat(amount.toFixed(2)),
-            signature,
-            tx: `https://solscan.io/tx/${signature}`,
-            timestamp: Date.now()
-          });
-        } else {
-          console.log(`🚫 Sent amount (${amount}) is below threshold`);
-        }
+      const amt = Number(t.amount);  
+      if (amt >= MIN_AMOUNT) {
+        console.log(`🎉 New winner ${t.to}: ${amt} FART`);
+        updated.unshift({
+          address: t.to,
+          amount: parseFloat(amt.toFixed(2)),
+          signature: t.signature,
+          tx: `https://solscan.io/tx/${t.signature}`,
+          timestamp: Date.now()
+        });
       }
     }
 
-    if (updatedWinners.length !== existing.length) {
-      const latest = updatedWinners.slice(0, 100);
-      writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));
-      console.log(`✅ Saved ${latest.length} winners to file.`);
+    if (updated.length !== existing.length) {
+      saveWinners(updated);
+      console.log(`✅ Winners.json updated (${updated.length} total)`);
     } else {
-      console.log('⏸ No new winners added.');
+      console.log('⏸ No new winners');
     }
   } catch (err) {
-    console.error('❌ Error in winner tracker:', err);
+    console.error('❌ Tracker error:', err);
   }
 }
 
