@@ -5,6 +5,10 @@ on:
     - cron: "0 * * * *"  # every hour
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -25,14 +29,12 @@ jobs:
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
 
-      - name: Check status and commit changes
+      - name: Commit changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add winners.json
-          git status  # Debugging step: Check which files are staged
-          git diff winners.json  # Check if there are changes to the file
           git commit -m "Update winners" || echo "No changes to commit"
-          git push
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/PowerFartLottery/PowerFart.git HEAD:main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
