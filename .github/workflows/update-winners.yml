@@ -25,12 +25,14 @@ jobs:
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
 
-      - name: Commit changes
+      - name: Check status and commit changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add winners.json
-          git commit -m "Update winners"
+          git status  # Debugging step: Check which files are staged
+          git diff winners.json  # Check if there are changes to the file
+          git commit -m "Update winners" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
