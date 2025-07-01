@@ -17,15 +17,15 @@ async function fetchTransactionSignatures(walletAddress, limit = 1000) {
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
-        method: 'getConfirmedSignaturesForAddress2',
+        method: 'getSignaturesForAddress',
         params: [walletAddress, { limit }],
       }),
     });
 
     const data = await response.json();
-    
+
     // Log the response to check its structure
-    console.log("Response from getConfirmedSignaturesForAddress2:", data);
+    console.log("Response from getSignaturesForAddress:", data);
 
     if (data.result) {
       return data.result;
@@ -50,7 +50,7 @@ async function fetchTransactionDetails(signature) {
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
-        method: 'getConfirmedTransaction',
+        method: 'getTransaction',
         params: [signature],
       }),
     });
