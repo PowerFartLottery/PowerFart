@@ -5,10 +5,6 @@ on:
     - cron: "0 * * * *"  # every hour
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -29,12 +25,10 @@ jobs:
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
 
-      - name: Commit changes
+      - name: Commit updated winners.json
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          git config --global user.name "PowerFart Bot"
+          git config --global user.email "bot@powerfart.fun"
           git add winners.json
-          git commit -m "Update winners" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/PowerFartLottery/PowerFart.git HEAD:main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git commit -m "Update winners [auto]" || echo "No changes to commit"
+          git push
