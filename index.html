@@ -216,12 +216,7 @@ First release: June 5, 2025
   </div>
 </body>
 </html>
-<div class="section">
-  <h2>Previous Winners</h2>
-  <ul id="winners">
-    <li>Loading...</li>
-  </ul>
-</div>
+
   <!-- Audio -->
   <audio id="bootSound" preload="auto">
     <source src="https://upload.wikimedia.org/wikipedia/en/1/1f/Windows_XP_Startup_sound.ogg" type="audio/ogg" />
@@ -468,7 +463,13 @@ First release: June 5, 2025
     }
   }
 
-
+<div class="section">
+  <h2>Previous Winners</h2>
+  <ul id="winners">
+    <li>Loading...</li>
+  </ul>
+</div>
+  
 fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
   .then(res => {
     // Check if the response is not a successful JSON response
