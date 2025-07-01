@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -190,13 +189,7 @@
   <!-- Boot Screen -->
   <div id="bootScreen">
     <div id="bootText">
-
-                                                                                                                                     
-
-POWERFART TECHNOLOGIES® 2025
-                                                                                                                      
-                                                                                
-      
+      POWERFART TECHNOLOGIES® 2025
     </div>
     <div id="loadingBarContainer">
       <div style="color: #0f0; margin-bottom: 0.3rem;">PowerFart Technologies ® Loading</div>
@@ -208,24 +201,38 @@ POWERFART TECHNOLOGIES® 2025
   <!-- Fart Button -->
   <div class="fart-wrapper">
     <button id="fartButton" aria-label="Launch PowerFart">
-PowerFart™ v4.2.0  
-────────────────────  
-© 2025 PowerFart Technologies  
-Created by Fartoshi Shartamoto  
-First release: June 5, 2025  
+      PowerFart™ v4.2.0  
+      ────────────────────  
+      © 2025 PowerFart Technologies  
+      Created by Fartoshi Shartamoto  
+      First release: June 5, 2025  
     </button>
   </div>
-</body>
-</html>
+
+  <!-- Contract Address -->
+  <pre id="contractAddress" title="Click to copy">
+    <code>
+      <span class="comment">// Contract Address:</span>
+      <span class="string">CpG2Tc1EP5jZJf7bjns5faGD6qDaKbCbvEbRUh5EHZ9a</span>
+    </code>
+  </pre>
+
+  <!-- Section for Previous Winners -->
+  <div class="section">
+    <h2>Previous Winners</h2>
+    <ul id="winners">
+      <li>Loading...</li>
+    </ul>
+  </div>
 
   <!-- Audio -->
+  <audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
   <audio id="bootSound" preload="auto">
     <source src="https://upload.wikimedia.org/wikipedia/en/1/1f/Windows_XP_Startup_sound.ogg" type="audio/ogg" />
-    <!-- You can host your own mp3 version if needed -->
   </audio>
 
-  <!-- Boot Script -->
   <script>
+    // Boot Screen Logic
     const bootScreen = document.getElementById('bootScreen');
     const bootText = document.getElementById('bootText');
     const loadingBar = document.getElementById('loadingBar');
@@ -287,215 +294,64 @@ First release: June 5, 2025
       loadingBar.style.width = '100%';
       cursor.style.display = 'none';
       bootSound.play();
-      bootScreen.style.transition = "opacity 1.5s ease";
-      bootScreen.style.opacity = 0;
-      setTimeout(() => {
-        bootScreen.style.display = "none";
-      }, 1600);
+      bootScreen.style.transition = "opacity 1s ease";
+      bootScreen.style.opacity = '0';
+      setTimeout(() => bootScreen.style.display = 'none', 1000);
     }
 
-    bootScreen.addEventListener('click', () => {
-      if (!skipBoot) {
-        skipBoot = true;
-        finishBoot();
-      }
-    });
+    setTimeout(nextLine, 500);
 
-    window.addEventListener('load', () => {
-      nextLine();
-    });
-  </script>
-</body>
-</html>
-
-
-  <!-- Contract Address (click to copy with fart) -->
-  <pre id="contractAddress" title="Click to copy"><code>
-<span class="comment">// Contract Address:</span>
-<span class="string">CpG2Tc1EP5jZJf7bjns5faGD6qDaKbCbvEbRUh5EHZ9a</span>
-</code></pre>
-
-  <audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
-
-  <pre><code><span class="comment">/* PowerFart Lottery Logic */</span>
-
-<span class="comment">// Eligibility Check</span>
-<span class="keyword">function</span> <span class="function">eligibility</span>(wallet) {
-  <span class="keyword">return</span> wallet.balance >= <span class="number">10000</span>;
-}
-
-<span class="comment">/* Holding Duration Boost */</span>
-<span class="keyword">function</span> <span class="function">weightedChance</span>(wallet) {
-  <span class="keyword">return</span> wallet.holdTime * wallet.balance;
-}
-
-<span class="comment">// Winner Selection</span>
-<span class="keyword">const</span> <span class="function">powerFart</span> = () =&gt; {
-  <span class="keyword">const</span> winner = <span class="comment">/* randomHolder() */</span>;
-  <span class="keyword">if</span> (winner?.isLucky?.()) {
-    <span class="comment">/* airdropFartcoin(winner.address); */</span>
-  }
-}
-
-<span class="comment">// No tickets. No effort. Just hold PF tokens</span>
-<span class="comment">// and get Fartcoin directly in your wallet.</span>
-
-</code></pre>
-
-  <pre><code><span class="comment">// Countdown to next winner</span>
-  <span class="keyword">let</span> <span class="function">nextWinnerIn</span> = <span class="string">"</span><span id="countdown" class="string">--:--</span><span class="string">"</span>;
-  </code></pre>
-
-  <pre><code><span class="comment">// Current Pool Prize (Fartcoin)</span>
-  <span class="keyword">const</span> <span class="function">jackpot</span> = <span class="string">"</span><span id="jackpot" class="string">Loading...</span><span class="string">"</span>;
-  </code></pre>
-
-  <pre><code><span class="comment">// Previous Winners</span>
-  <span class="keyword">const</span> <span class="function">winners</span> = [
-    <span id="winners">
-      <span class="string">"Loading..."</span>
-    </span>
-  ];
-  </code></pre>
-
-  <script>
+    // Fart Button and Sound Logic
     const fartButton = document.getElementById('fartButton');
     const fartSound = document.getElementById('fartSound');
 
-    // Fart on button click
-    fartButton.addEventListener('click', () => {
-      fartSound.currentTime = 0;
+    fartButton.addEventListener('click', function () {
       fartSound.play();
-
-      const fartCloud = document.createElement('div');
-      fartCloud.classList.add('fart-cloud');
-      fartCloud.textContent = '💨💥💨';
-
-      const rect = fartButton.getBoundingClientRect();
-      fartCloud.style.left = (rect.left + rect.width / 2) + 'px';
-      fartCloud.style.bottom = '80px';
-      fartCloud.style.position = 'fixed';
-
-      document.body.appendChild(fartCloud);
-
-      fartCloud.addEventListener('animationend', () => {
-        fartCloud.remove();
-      });
+      createFartCloud();
     });
 
-    // Fart & copy contract address
-    const caPre = document.getElementById('contractAddress');
-    caPre.addEventListener('click', () => {
-      const codeLines = caPre.innerText.trim().split('\n');
-      const address = codeLines[codeLines.length - 1].trim();
-      navigator.clipboard.writeText(address).then(() => {
-        fartSound.currentTime = 0;
-        fartSound.play();
-      });
+    function createFartCloud() {
+      const fartCloud = document.createElement('div');
+      fartCloud.classList.add('fart-cloud');
+      fartCloud.textContent = '💨';
+      document.body.appendChild(fartCloud);
+      setTimeout(() => {
+        fartCloud.style.animation = "fartPoof 1s ease-out forwards";
+      }, 50);
+      setTimeout(() => {
+        fartCloud.remove();
+      }, 1000);
+    }
+
+    // Contract Address Copy Logic
+    const contractAddress = document.getElementById('contractAddress');
+
+    contractAddress.addEventListener('click', function () {
+      navigator.clipboard.writeText(contractAddress.textContent.trim())
+        .then(() => {
+          alert('Contract Address Copied!');
+        })
+        .catch(() => {
+          alert('Failed to copy Contract Address!');
+        });
+    });
+
+    // Mock Winners Data
+    const winners = [
+      { name: 'Fartoshi Shartamoto', prize: '1000 Fartcoins', link: '#' },
+      { name: 'Sir Farts-a-lot', prize: '500 Fartcoins', link: '#' },
+      { name: 'FlatulenceMaster', prize: '250 Fartcoins', link: '#' }
+    ];
+
+    const winnersList = document.getElementById('winners');
+    winnersList.innerHTML = '';
+
+    winners.forEach(winner => {
+      const listItem = document.createElement('li');
+      listItem.innerHTML = `<a href="${winner.link}">${winner.name}</a> won ${winner.prize}`;
+      winnersList.appendChild(listItem);
     });
   </script>
 
-</body>
-</html>
-
-
-<script>
-  const HELIUS_API_KEY = "c698448b-867d-4b89-8d94-86c6dd939233";
-  const HELIUS_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
-  const TEAM_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE";
-  const FARTCOIN_TOKEN = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump";
-  const FARTCOIN_DECIMALS = 6;
-
-  function updateCountdown() {
-    const countdownEl = document.getElementById('countdown');
-    const now = new Date();
-    const nextHour = new Date(now);
-    nextHour.setMinutes(0, 0, 0);
-    nextHour.setHours(now.getHours() + 1);
-    const diff = nextHour.getTime() - now.getTime();
-
-    if (diff <= 0) {
-      countdownEl.textContent = "00:00";
-      return;
-    }
-
-    const minutes = Math.floor(diff / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }
-
-  setInterval(updateCountdown, 1000);
-  updateCountdown();
-
-  async function fetchFartcoinBalance() {
-    try {
-      const res = await fetch(HELIUS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getTokenAccountsByOwner",
-          params: [
-            TEAM_WALLET,
-            { mint: FARTCOIN_TOKEN },
-            { encoding: "jsonParsed" }
-          ]
-        })
-      });
-
-      const data = await res.json();
-      const tokenAccounts = data.result.value;
-
-      let totalAmount = 0n;
-      for (const account of tokenAccounts) {
-        const amountStr = account.account.data.parsed.info.tokenAmount.amount;
-        totalAmount += BigInt(amountStr);
-      }
-
-      const totalFartcoin = Number(totalAmount) / Math.pow(10, FARTCOIN_DECIMALS);
-      document.getElementById("jackpot").textContent = totalFartcoin.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }) + " FART";
-    } catch (err) {
-      console.error("Failed to fetch fartcoin balance:", err);
-      document.getElementById("jackpot").textContent = "Error loading balance";
-    }
-  }
-<div class="section">
-  <h2>Previous Winners</h2>
-  <ul id="winners">
-    <li>Loading...</li>
-  </ul>
-</div>
-
-fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
-  .then(res => {
-    // Check if the response is not a successful JSON response
-    if (!res.ok) {
-      throw new Error('Failed to fetch winners. Status: ' + res.status);
-    }
-    return res.json();
-  })
-  .then(data => {
-    const list = document.getElementById('winners');
-    list.innerHTML = '';
-    if (data.length === 0) {
-      list.innerHTML = '<li>No winners yet</li>';
-    } else {
-      data.forEach(w => {
-        const li = document.createElement('li');
-        li.innerHTML = `<a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>`;
-        list.appendChild(li);
-      });
-    }
-  })
-  .catch(err => {
-    console.error('Error fetching winners:', err);
-    document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
-  });
-
-</script>
 </body>
 </html>
