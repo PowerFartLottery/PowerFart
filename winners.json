@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "name": "John Doe",
+    "transaction_id": "abcd1234",
+    "amount": 1000,
+    "timestamp": "2023-06-25T15:30:00Z"
+  },
+  {
+    "name": "Jane Smith",
+    "transaction_id": "efgh5678",
+    "amount": 2000,
+    "timestamp": "2023-06-26T16:45:00Z"
+  },
+  {
+    "name": "Sam Brown",
+    "transaction_id": "ijkl9012",
+    "amount": 1500,
+    "timestamp": "2023-06-27T10:00:00Z"
+  }
+]
