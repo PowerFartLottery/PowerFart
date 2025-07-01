@@ -225,83 +225,88 @@ First release: June 5, 2025
 
   <!-- Boot Script -->
   <script>
-    const bootScreen = document.getElementById('bootScreen');
-    const bootText = document.getElementById('bootText');
-    const loadingBar = document.getElementById('loadingBar');
-    const cursor = document.getElementById('cursor');
-    const bootSound = document.getElementById('bootSound');
+// Boot Screen Script
+const bootScreen = document.getElementById('bootScreen');
+const bootText = document.getElementById('bootText');
+const loadingBar = document.getElementById('loadingBar');
+const cursor = document.getElementById('cursor');
+const bootSound = document.getElementById('bootSound');
 
-    const bootMessages = [
-      "PowerFart OS v4.2.0 initializing...",
-      "Loading core modules...",
-      "Establishing Fartcoin blockchain link...",
-      "Verifying wallet balances...",
-      "Checking fart emission levels...",
-      "Calibrating gas sensors...",
-      "Ready. Enjoy the power of the fart!",
-      "PowerFart Technologies® 2025 "
-    ];
+const bootMessages = [
+  "PowerFart OS v4.2.0 initializing...",
+  "Loading core modules...",
+  "Establishing Fartcoin blockchain link...",
+  "Verifying wallet balances...",
+  "Checking fart emission levels...",
+  "Calibrating gas sensors...",
+  "Ready. Enjoy the power of the fart!",
+  "PowerFart Technologies® 2025 "
+];
 
-    let lineIndex = 0;
-    let skipBoot = false;
+let lineIndex = 0;
+let skipBoot = false;
 
-    function typeLine(line, callback) {
-      let i = 0;
-      function typeChar() {
-        if (skipBoot) {
-          bootText.textContent += line + "\n";
-          callback();
-          return;
-        }
-        if (i < line.length) {
-          bootText.textContent += line.charAt(i);
-          i++;
-          setTimeout(typeChar, 40);
-        } else {
-          bootText.textContent += "\n";
-          callback();
-        }
-      }
-      typeChar();
+function typeLine(line, callback) {
+  let i = 0;
+  function typeChar() {
+    if (skipBoot) {
+      bootText.textContent += line + "\n";
+      callback();
+      return;
     }
-
-    function nextLine() {
-      if (skipBoot) {
-        finishBoot();
-        return;
-      }
-      if (lineIndex < bootMessages.length) {
-        const progress = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
-        loadingBar.style.width = progress + '%';
-        typeLine(bootMessages[lineIndex], () => {
-          lineIndex++;
-          setTimeout(nextLine, 200);
-        });
-      } else {
-        finishBoot();
-      }
+    if (i < line.length) {
+      bootText.textContent += line.charAt(i);
+      i++;
+      setTimeout(typeChar, 40);
+    } else {
+      bootText.textContent += "\n";
+      callback();
     }
+  }
+  typeChar();
+}
 
-    function finishBoot() {
-      loadingBar.style.width = '100%';
-      cursor.style.display = 'none';
-      bootSound.play();
-      bootScreen.style.transition = "opacity 1.5s ease";
-      bootScreen.style.opacity = 0;
-      setTimeout(() => {
-        bootScreen.style.display = "none";
-      }, 1600);
-    }
-
-    bootScreen.addEventListener('click', () => {
-      if (!skipBoot) {
-        skipBoot = true;
-        finishBoot();
-      }
+function nextLine() {
+  if (skipBoot) {
+    finishBoot();
+    return;
+  }
+  if (lineIndex < bootMessages.length) {
+    const progress = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
+    loadingBar.style.width = progress + '%';
+    typeLine(bootMessages[lineIndex], () => {
+      lineIndex++;
+      setTimeout(nextLine, 200);
     });
+  } else {
+    finishBoot();
+  }
+}
 
-    window.addEventListener('load', () => {
-      nextLine();
+function finishBoot() {
+  loadingBar.style.width = '100%';
+  cursor.style.display = 'none';
+  // Ensure bootSound only plays after user interaction
+  if (bootSound) {
+    bootSound.play().catch(error => {
+      console.log("Error playing sound:", error);
+    });
+  }
+  bootScreen.style.transition = "opacity 1.5s ease";
+  bootScreen.style.opacity = 0;
+  setTimeout(() => {
+    bootScreen.style.display = "none";
+  }, 1600);
+}
+
+bootScreen.addEventListener('click', () => {
+  if (!skipBoot) {
+    skipBoot = true;
+    finishBoot();
+  }
+});
+
+window.addEventListener('load', nextLine);
     });
   </script>
 </body>
