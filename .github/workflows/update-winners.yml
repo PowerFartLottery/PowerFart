@@ -24,3 +24,16 @@ jobs:
         run: node tracker.mjs
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+
+          - name: Commit changes
+  run: |
+    git config --global user.name "github-actions"
+    git config --global user.email "github-actions@github.com"
+    git add winners.json
+    git commit -m "Update winners"
+    git push
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
