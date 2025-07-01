@@ -22,7 +22,7 @@ jobs:
       - name: Run tracker
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
-        run: node tracker.js
+        run: node tracker.mjs
 
       - name: Commit winners.json
         run: |
