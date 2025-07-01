@@ -2,9 +2,11 @@ name: Update Winners
 
 on:
   schedule:
-    - cron: "0 * * * *"  # every hour
+    - cron: "0 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
 jobs:
   update:
     runs-on: ubuntu-latest
