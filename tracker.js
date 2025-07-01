@@ -1,7 +1,5 @@
 // tracker.js
 // Automated Fartcoin Winner Tracker (local + GitHub update)
-
-const fetch = require('node-fetch');
 const fs = require('fs');
 
 // === CONFIG ===
