@@ -14,7 +14,7 @@ const WINNERS_PATH = './winners.json';
 const jsonRpcBody = {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "getConfirmedSignaturesForAddress2",
+  "method": "getSignaturesForAddress",
   "params": [DISTRIBUTION_WALLET, { "limit": 20 }]
 };
 
