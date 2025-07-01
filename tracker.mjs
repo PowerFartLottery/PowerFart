@@ -1,71 +1,61 @@
-import fetch from 'node-fetch'; // Make sure to use import for ES module compatibility
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
-const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+// List of winners
+const winners = [
+    { address: "AtoQ1Y6zm4NxNwie8jbrM4VjXVh6fQyqyajCKEyn5RPJ", amount: 1261.47 },
+    { address: "jjXczvExrj8ChL39PVwq54yNXFi86WKciCgvRuLdNda", amount: 1060.00 },
+    { address: "7h8CFdqynASZmFcVVEexLgPBmgTmvNF243bBAnryK8MS", amount: 1016.86 },
+    { address: "EKFxBzg8n4PbwTES5skQm2cKvxpr2g8skKYq6HKvfEWF", amount: 815.18 },
+    { address: "6SY1BdgfJkcoKKsu36bFFXJHYQB3kqpWQx2EgBD85gMo", amount: 440.92 },
+    { address: "Fus1BvxRyiMxSokafiDE21cJVS3GFCeasc3kWUBWgzi7", amount: 472.39 },
+    { address: "HLgkhbN966cCCrX9xDsJofmgmzbKDjh6Sodecaq14gfz", amount: 255.74 },
+    { address: "2yg76DQnzdLVc6zGp4GB3ankn66L1fZJuBcWaoo1TwRx", amount: 275.40 }
+];
 
-const fartCoinMintAddress = new PublicKey('9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump'); // FartCoin Mint Address
-const distributionWalletAddress = new PublicKey('6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE'); // Distribution Wallet Address
+// Initialize Solana connection
+const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
 
-const minFartCoinAmount = 10; // 10 FartCoin
-const minAmountInUnits = minFartCoinAmount * Math.pow(10, 6); // 10,000,000 (for 6 decimals)
-
-// Function to fetch transactions for the given wallet
-async function fetchTransactions() {
-    try {
-        console.log(`Fetching transaction signatures for wallet: ${distributionWalletAddress.toBase58()}`);
-
-        const transactionSignatures = await connection.getSignaturesForAddress(distributionWalletAddress, { limit: 100 });
-        if (transactionSignatures.length === 0) {
-            console.log('No transactions found for this wallet.');
-            return [];
-        }
-
-        const transactions = [];
-
-        for (const txSignature of transactionSignatures) {
-            const txDetails = await connection.getTransaction(txSignature.signature);
-            
-            if (!txDetails || !txDetails.meta || !txDetails.meta.preTokenBalances) {
-                continue; // Skip if transaction details are missing or malformed
-            }
-
-            for (const balance of txDetails.meta.preTokenBalances) {
-                // Check if this transaction involves FartCoin and the amount is greater than the minimum threshold
-                if (balance.mint === fartCoinMintAddress.toBase58() && balance.uiAmount && balance.uiAmount * Math.pow(10, 6) > minAmountInUnits) {
-                    const postBalances = txDetails.meta.postTokenBalances;
-                    const outgoingTransaction = postBalances.some(postBalance => 
-                        postBalance.mint === fartCoinMintAddress.toBase58() && postBalance.uiAmount < balance.uiAmount
-                    );
-
-                    if (outgoingTransaction) {
-                        transactions.push({
-                            signature: txSignature.signature,
-                            blockTime: txDetails.blockTime,
-                            amount: balance.uiAmount, // Amount in FartCoin
-                        });
-                    }
-                }
-            }
-        }
-
-        return transactions;
-    } catch (error) {
-        console.error('Error fetching transactions:', error);
-        return [];
+// Fetch transactions for a given wallet address
+async function getTransactions(walletAddress) {
+    const publicKey = new PublicKey(walletAddress);
+    const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 1000 });
+    
+    for (const signatureData of signatures) {
+        const transaction = await connection.getTransaction(signatureData.signature);
+        
+        // Check if the transaction involves any winners
+        checkForWinners(transaction);
     }
 }
 
-// Function to display filtered transactions
-async function displayFilteredTransactions() {
-    const filteredTransactions = await fetchTransactions();
+// Check if the transaction involves any of the winner's addresses
+function checkForWinners(transaction) {
+    if (!transaction) return;
 
-    if (filteredTransactions.length > 0) {
-        console.log('Filtered Outgoing FartCoin Transactions (Greater than 10 FartCoin):');
-        console.table(filteredTransactions);
-    } else {
-        console.log('No outgoing FartCoin transactions found greater than 10 FartCoin.');
+    const { transaction: { message } } = transaction;
+
+    // Loop through each instruction in the transaction to see if any winner's address is involved
+    for (const instruction of message.instructions) {
+        const senderAddress = instruction.keys[0]?.pubkey.toBase58();  // Sender address
+        const receiverAddress = instruction.keys[1]?.pubkey.toBase58(); // Receiver address
+        
+        // Check if sender or receiver is one of the winners
+        if (isWinner(senderAddress) || isWinner(receiverAddress)) {
+            console.log('Winner Transaction Detected: ', {
+                senderAddress,
+                receiverAddress,
+                signature: transaction.transaction.signatures[0],
+                blockTime: transaction.blockTime
+            });
+        }
     }
 }
 
-// Run the function to fetch and display filtered transactions
-displayFilteredTransactions();
+// Check if an address is one of the winners
+function isWinner(address) {
+    return winners.some(winner => winner.address === address);
+}
+
+// Start fetching transactions for the wallet
+const walletAddress = 'your_wallet_address_here';
+getTransactions(walletAddress);
