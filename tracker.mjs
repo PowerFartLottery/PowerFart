@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 // Solana RPC URL
 const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
