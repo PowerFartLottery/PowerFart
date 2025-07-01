@@ -35,47 +35,47 @@ async function main() {
     const updatedWinners = [...existing];
 
     for (const tx of transactions) {
-      console.log(`🔍 TX: ${tx.signature}`);
-      if (knownSignatures.has(tx.signature)) {
-        console.log(`   ⏭ Already recorded`);
-        continue;
-      }
+  console.log(`🔍 TX: ${tx.signature}`);
+  if (knownSignatures.has(tx.signature)) {
+    console.log(`   ⏭ Already recorded`);
+    continue;
+  }
 
-      const tokenTransfers = tx.tokenTransfers || [];
-      console.log(`   Token Transfers: ${JSON.stringify(tokenTransfers)}`); // Debugging log
+  const tokenTransfers = tx.tokenTransfers || [];
+  if (!tokenTransfers.length) {
+    console.log("   ⚠️  No token transfers");
+    continue;
+  }
 
-      if (!tokenTransfers.length) {
-        console.log("   ⚠️  No token transfers");
-        continue;
-      }
+  for (const transfer of tokenTransfers) {
+    const isFart = transfer.mint === FARTCOIN_MINT;
+    const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;
+    const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;
 
-      for (const transfer of tokenTransfers) {
-        const isFart = transfer.mint === FARTCOIN_MINT;
-        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;
-        const rawAmount = transfer.tokenAmount.amount;
-        const amount = Number(rawAmount) / Math.pow(10, DECIMALS);
+    // Use tokenAmount directly as it's just a number
+    const rawAmount = transfer.tokenAmount;
+    const amount = Number(rawAmount) / Math.pow(10, DECIMALS);
 
-        console.log(`   ➤ Mint: ${transfer.mint}`);
-        console.log(`     From: ${transfer.fromUserAccount}`);
-        console.log(`     To: ${transfer.toUserAccount}`);
-        console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
+    console.log(`   ➤ Mint: ${transfer.mint}`);
+    console.log(`     From: ${transfer.fromUserAccount}`);
+    console.log(`     To: ${transfer.toUserAccount}`);
+    console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
 
-        // Check for valid transfer from distribution wallet to another wallet with enough Fartcoin
-        if (isFart && fromDistributionWallet && toOtherWallet && amount >= MIN_AMOUNT) {
-          console.log(`   ✅ WINNER! ${transfer.toUserAccount} gets ${amount} FART`);
-          updatedWinners.unshift({
-            address: transfer.toUserAccount,
-            amount: parseFloat(amount.toFixed(2)),
-            signature: tx.signature,
-            tx: `https://solscan.io/tx/${tx.signature}`,
-            timestamp: Date.now()
-          });
-        } else {
-          console.log("   🚫 Not eligible");
-        }
-      }
+    // Proceed only if transfer is to a different wallet and the amount is sufficient
+    if (isFart && toOtherWallet && amount >= MIN_AMOUNT) {
+      console.log(`   ✅ WINNER! ${transfer.toUserAccount} gets ${amount} FART`);
+      updatedWinners.unshift({
+        address: transfer.toUserAccount,
+        amount: parseFloat(amount.toFixed(2)),
+        signature: tx.signature,
+        tx: `https://solscan.io/tx/${tx.signature}`,
+        timestamp: Date.now()
+      });
+    } else {
+      console.log("   🚫 Not eligible");
     }
+  }
+}
 
     if (updatedWinners.length !== existing.length) {
       const latest = updatedWinners.slice(0, 100);
