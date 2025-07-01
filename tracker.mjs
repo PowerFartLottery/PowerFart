@@ -1,8 +1,7 @@
-// tracker.js
+// tracker.mjs
 // Automated Fartcoin Winner Tracker (local + GitHub update)
-const fs = require('fs');
 
-// === CONFIG ===
+import fs from 'fs';
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
@@ -51,16 +50,15 @@ async function main() {
       }
     }
 
-    if (updatedWinners.length > existing.length) {
-      const top100 = updatedWinners.slice(0, 100);
-      fs.writeFileSync(WINNERS_PATH, JSON.stringify(top100, null, 2));
-      console.log(`✅ Updated winners.json with ${top100.length} entries.`);
+    if (updatedWinners.length !== existing.length) {
+      fs.writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
+      console.log("✅ winners.json updated");
     } else {
-      console.log('⏸ No new winners found.');
+      console.log("⏸ No new winners");
     }
 
   } catch (err) {
-    console.error('❌ Error during fetch or write:', err);
+    console.error('❌ Error:', err);
   }
 }
 
