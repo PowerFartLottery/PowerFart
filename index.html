@@ -471,7 +471,13 @@ First release: June 5, 2025
 </div>
 
 fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
-  .then(res => res.json())
+  .then(res => {
+    // Check if the response is not a successful JSON response
+    if (!res.ok) {
+      throw new Error('Failed to fetch winners. Status: ' + res.status);
+    }
+    return res.json();
+  })
   .then(data => {
     const list = document.getElementById('winners');
     list.innerHTML = '';
@@ -486,8 +492,8 @@ fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners
     }
   })
   .catch(err => {
-    console.error(err);
-    document.getElementById('winners').innerHTML = '<li>Error loading winners 😢</li>';
+    console.error('Error fetching winners:', err);
+    document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
   });
 
 </script>
