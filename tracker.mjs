@@ -1,8 +1,8 @@
-// tracker.js
-// Automated Fartcoin Winner Tracker (local JSON updater)
+// tracker.mjs
+// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
 
-const fetch = require('node-fetch');
-const fs = require('fs');
+import fetch from 'node-fetch';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
@@ -15,8 +15,8 @@ const WINNERS_PATH = './winners.json';
 const HELIUS_URL = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=20`;
 
 async function fetchExistingWinners() {
-  if (fs.existsSync(WINNERS_PATH)) {
-    const data = fs.readFileSync(WINNERS_PATH, 'utf-8');
+  if (existsSync(WINNERS_PATH)) {
+    const data = readFileSync(WINNERS_PATH, 'utf-8');
     return JSON.parse(data);
   }
   return [];
@@ -57,7 +57,7 @@ async function main() {
     }
 
     if (updatedWinners.length !== existing.length) {
-      fs.writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
+      writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
       console.log(`✅ Saved ${updatedWinners.length} total winners.`);
     } else {
       console.log('⏸ No new winners to add.');
