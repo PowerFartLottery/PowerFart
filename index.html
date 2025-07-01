@@ -199,54 +199,33 @@ POWERFART TECHNOLOGIES® 2025
       
     </div>
     <div id="loadingBarContainer">
-      <div style="color: #0f0; margin-bottom: 0.3rem;">PowerFart Technologies ® Loading</div>
       <div id="loadingBar"></div>
     </div>
-    <div id="cursor"></div>
   </div>
 
   <!-- Fart Button -->
   <div class="fart-wrapper">
-    <button id="fartButton" aria-label="Launch PowerFart">
-PowerFart™ v4.2.0  
-────────────────────  
-© 2025 PowerFart Technologies  
-Created by Fartoshi Shartamoto  
-First release: June 5, 2025  
-    </button>
+    <button id="fartButton" style="display: none;">💨Fart!</button>
   </div>
 
-  <!-- Audio -->
-  <audio id="bootSound" preload="auto">
-    <source src="https://upload.wikimedia.org/wikipedia/en/1/1f/Windows_XP_Startup_sound.ogg" type="audio/ogg" />
-  </audio>
+  <audio id="bootSound" src="boot-sound.mp3" preload="auto"></audio>
+  <audio id="fartSound" src="fart-sound.mp3" preload="auto"></audio>
 
-  <audio id="fartSound" src="https://www.myinstants.com/media/sounds/fart-with-reverb.mp3"></audio>
-
-  <!-- Contract Address (click to copy with fart) -->
-  <pre id="contractAddress" title="Click to copy"><code>
-<span class="comment">// Contract Address:</span>
-<span class="string">CpG2Tc1EP5jZJf7bjns5faGD6qDaKbCbvEbRUh5EHZ9a</span>
-</code></pre>
-
-  <!-- Scripts -->
   <script>
-    const bootScreen = document.getElementById('bootScreen');
-    const bootText = document.getElementById('bootText');
-    const loadingBar = document.getElementById('loadingBar');
-    const cursor = document.getElementById('cursor');
-    const bootSound = document.getElementById('bootSound');
-    const fartButton = document.getElementById('fartButton');
-    const fartSound = document.getElementById('fartSound');
-
-    const bootMessages = [
-      "PowerFart OS v4.2.0 initializing...",
-      "Loading core modules...",
-      "Establishing Fartcoin blockchain link...",
-      "Verifying wallet balances...",
-      "Checking fart emission levels...",
-      "Calibrating gas sensors...",
-      "Ready. Enjoy the power of fart!"
+    let bootScreen = document.getElementById('bootScreen');
+    let bootText = document.getElementById('bootText');
+    let loadingBar = document.getElementById('loadingBar');
+    let fartButton = document.getElementById('fartButton');
+    let bootSound = document.getElementById('bootSound');
+    let fartSound = document.getElementById('fartSound');
+    
+    let bootMessages = [
+      "Initializing...\n\n",
+      "Checking system integrity...\n\n",
+      "Loading PowerFart OS...\n\n",
+      "Welcome to the fart zone...\n\n",
+      "You’re now connected to the fart network.\n\n",
+      "Ready to unleash...💨\n"
     ];
 
     let currentMessageIndex = 0;
