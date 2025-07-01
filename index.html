@@ -400,7 +400,7 @@ First release: June 5, 2025
 
 <script>
   const HELIUS_API_KEY = "c698448b-867d-4b89-8d94-86c6dd939233";
-  const HELIUS_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+  const HELIUS_URL = https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY};
   const TEAM_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE";
   const FARTCOIN_TOKEN = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump";
   const FARTCOIN_DECIMALS = 6;
@@ -420,7 +420,7 @@ First release: June 5, 2025
 
     const minutes = Math.floor(diff / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
-    countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    countdownEl.textContent = ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')};
   }
 
   setInterval(updateCountdown, 1000);
@@ -487,7 +487,7 @@ function loadManualWinners() {
 
     for (const winner of winners) {
       const li = document.createElement('li');
-      li.innerHTML = `<a href="https://solscan.io/account/${winner.address}" target="_blank">${winner.address}</a> - ${winner.amount.toFixed(2)} FART`;
+      li.innerHTML = <a href="https://solscan.io/account/${winner.address}" target="_blank">${winner.address}</a> - ${winner.amount.toFixed(2)} FART;
       winnersListEl.appendChild(li);
     }
   }
@@ -507,7 +507,7 @@ fetch('https://gist.github.com/PowerFartLottery/705e19a1ed3b616ec338f77e4bd80dc7
     } else {
       data.forEach(w => {
         const li = document.createElement('li');
-        li.innerHTML = `<a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>`;
+        li.innerHTML = <a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>;
         list.appendChild(li);
       });
     }
