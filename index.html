@@ -481,6 +481,8 @@ First release: June 5, 2025
         return res.json();
       })
       .then(data => {
+        console.log(data);  // Debugging line
+        
         const list = document.getElementById('winners');
         list.innerHTML = '';  // Clear the loading text
 
@@ -512,3 +514,4 @@ First release: June 5, 2025
 
 </body>
 </html>
+
