@@ -1,15 +1,12 @@
-// tracker.mjs
-// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
-
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
-const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
-const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
+const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE'; // Your distribution wallet address
+const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump'; // Fartcoin mint address
 const DECIMALS = 6;
-const MIN_AMOUNT = 10;
+const MIN_AMOUNT = 10;  // Minimum Fartcoin amount to be eligible
 const WINNERS_PATH = './winners.json';
 
 const HELIUS_URL = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=20`;
@@ -48,27 +45,24 @@ async function main() {
       }
 
       for (const transfer of tokenTransfers) {
-        const mintAddress = transfer.mint.trim();
-        const isFart = mintAddress === FARTCOIN_MINT.trim();
-        const fromDistributionWallet = transfer.fromUserAccount.trim() === DISTRIBUTION_WALLET.trim();
-        const toOtherWallet = transfer.toUserAccount.trim() !== DISTRIBUTION_WALLET.trim();
+        const isFart = transfer.mint === FARTCOIN_MINT; // Ensure it's Fartcoin
+        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;  // Ensure it's from the distribution wallet
+        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;  // Ensure it's going to another wallet
 
         // Direct amount without unnecessary division
-        const rawAmount = transfer.tokenAmount;
-        const amount = Number(rawAmount);
+        const rawAmount = transfer.tokenAmount; // Raw token amount
+        const amount = Number(rawAmount); // Convert to number
 
-        console.log(`   ➤ Mint: ${mintAddress}`);
+        console.log(`   ➤ Mint: ${transfer.mint}`);
         console.log(`     From: ${transfer.fromUserAccount}`);
         console.log(`     To: ${transfer.toUserAccount}`);
         console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
-        
-        // Debugging the conditions
         console.log(`     isFart: ${isFart}`);
         console.log(`     fromDistributionWallet: ${fromDistributionWallet}`);
         console.log(`     toOtherWallet: ${toOtherWallet}`);
         console.log(`     amount >= MIN_AMOUNT: ${amount >= MIN_AMOUNT}`);
 
-        // Only process if:
+        // Only proceed if:
         // 1. Transfer is from the distribution wallet
         // 2. Transfer is to a different wallet (not the distribution wallet)
         // 3. The amount is greater than or equal to MIN_AMOUNT
@@ -87,8 +81,9 @@ async function main() {
       }
     }
 
+    // Save the winners to the file
     if (updatedWinners.length !== existing.length) {
-      const latest = updatedWinners.slice(0, 100);
+      const latest = updatedWinners.slice(0, 100); // Limit to 100 latest winners
       writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));
       console.log(`✅ Saved ${latest.length} total winners.`);
     } else {
