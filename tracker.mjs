@@ -48,15 +48,16 @@ async function main() {
       }
 
       for (const transfer of tokenTransfers) {
-        const isFart = transfer.mint === FARTCOIN_MINT;
-        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;  // Ensure it's from distribution wallet
-        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;  // Ensure it's going to another wallet
+        const mintAddress = transfer.mint.trim();
+        const isFart = mintAddress === FARTCOIN_MINT.trim();
+        const fromDistributionWallet = transfer.fromUserAccount.trim() === DISTRIBUTION_WALLET.trim();
+        const toOtherWallet = transfer.toUserAccount.trim() !== DISTRIBUTION_WALLET.trim();
 
         // Direct amount without unnecessary division
         const rawAmount = transfer.tokenAmount;
         const amount = Number(rawAmount);
 
-        console.log(`   ➤ Mint: ${transfer.mint}`);
+        console.log(`   ➤ Mint: ${mintAddress}`);
         console.log(`     From: ${transfer.fromUserAccount}`);
         console.log(`     To: ${transfer.toUserAccount}`);
         console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
