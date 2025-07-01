@@ -225,88 +225,83 @@ First release: June 5, 2025
 
   <!-- Boot Script -->
   <script>
-// Boot Screen Script
-const bootScreen = document.getElementById('bootScreen');
-const bootText = document.getElementById('bootText');
-const loadingBar = document.getElementById('loadingBar');
-const cursor = document.getElementById('cursor');
-const bootSound = document.getElementById('bootSound');
+    const bootScreen = document.getElementById('bootScreen');
+    const bootText = document.getElementById('bootText');
+    const loadingBar = document.getElementById('loadingBar');
+    const cursor = document.getElementById('cursor');
+    const bootSound = document.getElementById('bootSound');
 
-const bootMessages = [
-  "PowerFart OS v4.2.0 initializing...",
-  "Loading core modules...",
-  "Establishing Fartcoin blockchain link...",
-  "Verifying wallet balances...",
-  "Checking fart emission levels...",
-  "Calibrating gas sensors...",
-  "Ready. Enjoy the power of the fart!",
-  "PowerFart Technologies® 2025 "
-];
+    const bootMessages = [
+      "PowerFart OS v4.2.0 initializing...",
+      "Loading core modules...",
+      "Establishing Fartcoin blockchain link...",
+      "Verifying wallet balances...",
+      "Checking fart emission levels...",
+      "Calibrating gas sensors...",
+      "Ready. Enjoy the power of the fart!",
+      "PowerFart Technologies® 2025 "
+    ];
 
-let lineIndex = 0;
-let skipBoot = false;
+    let lineIndex = 0;
+    let skipBoot = false;
 
-function typeLine(line, callback) {
-  let i = 0;
-  function typeChar() {
-    if (skipBoot) {
-      bootText.textContent += line + "\n";
-      callback();
-      return;
+    function typeLine(line, callback) {
+      let i = 0;
+      function typeChar() {
+        if (skipBoot) {
+          bootText.textContent += line + "\n";
+          callback();
+          return;
+        }
+        if (i < line.length) {
+          bootText.textContent += line.charAt(i);
+          i++;
+          setTimeout(typeChar, 40);
+        } else {
+          bootText.textContent += "\n";
+          callback();
+        }
+      }
+      typeChar();
     }
-    if (i < line.length) {
-      bootText.textContent += line.charAt(i);
-      i++;
-      setTimeout(typeChar, 40);
-    } else {
-      bootText.textContent += "\n";
-      callback();
+
+    function nextLine() {
+      if (skipBoot) {
+        finishBoot();
+        return;
+      }
+      if (lineIndex < bootMessages.length) {
+        const progress = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
+        loadingBar.style.width = progress + '%';
+        typeLine(bootMessages[lineIndex], () => {
+          lineIndex++;
+          setTimeout(nextLine, 200);
+        });
+      } else {
+        finishBoot();
+      }
     }
-  }
-  typeChar();
-}
 
-function nextLine() {
-  if (skipBoot) {
-    finishBoot();
-    return;
-  }
-  if (lineIndex < bootMessages.length) {
-    const progress = Math.floor((lineIndex / (bootMessages.length - 1)) * 100);
-    loadingBar.style.width = progress + '%';
-    typeLine(bootMessages[lineIndex], () => {
-      lineIndex++;
-      setTimeout(nextLine, 200);
+    function finishBoot() {
+      loadingBar.style.width = '100%';
+      cursor.style.display = 'none';
+      bootSound.play();
+      bootScreen.style.transition = "opacity 1.5s ease";
+      bootScreen.style.opacity = 0;
+      setTimeout(() => {
+        bootScreen.style.display = "none";
+      }, 1600);
+    }
+
+    bootScreen.addEventListener('click', () => {
+      if (!skipBoot) {
+        skipBoot = true;
+        finishBoot();
+      }
     });
-  } else {
-    finishBoot();
-  }
-}
 
-function finishBoot() {
-  loadingBar.style.width = '100%';
-  cursor.style.display = 'none';
-  // Ensure bootSound only plays after user interaction
-  if (bootSound) {
-    bootSound.play().catch(error => {
-      console.log("Error playing sound:", error);
-    });
-  }
-  bootScreen.style.transition = "opacity 1.5s ease";
-  bootScreen.style.opacity = 0;
-  setTimeout(() => {
-    bootScreen.style.display = "none";
-  }, 1600);
-}
-
-bootScreen.addEventListener('click', () => {
-  if (!skipBoot) {
-    skipBoot = true;
-    finishBoot();
-  }
-});
-
-window.addEventListener('load', nextLine);
+    window.addEventListener('load', () => {
+      nextLine();
     });
   </script>
 </body>
@@ -405,7 +400,7 @@ window.addEventListener('load', nextLine);
 
 <script>
   const HELIUS_API_KEY = "c698448b-867d-4b89-8d94-86c6dd939233";
-  const HELIUS_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+  const HELIUS_URL = https:'//mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}';
   const TEAM_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE";
   const FARTCOIN_TOKEN = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump";
   const FARTCOIN_DECIMALS = 6;
@@ -491,7 +486,7 @@ fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners
     } else {
       data.forEach(w => {
         const li = document.createElement('li');
-        li.innerHTML = `<a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>`;
+        li.innerHTML = <a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> - ${w.amount.toFixed(2)} FART <a href="${w.tx}" target="_blank">🔗</a>;
 
         list.appendChild(li);
       });
@@ -499,7 +494,7 @@ fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners
   })
   .catch(err => {
     console.error('Error fetching winners:', err);
-    document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
+    document.getElementById('winners').innerHTML = <li>Error loading winners: ${err.message}</li>;
 
   });
 
