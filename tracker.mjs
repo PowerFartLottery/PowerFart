@@ -83,4 +83,16 @@ async function main() {
     // Save the updated winners list if there are any new winners
     if (updatedWinners.length !== existing.length) {
       const latest = updatedWinners.slice(0, 100);
-      writeFileSync(WINNERS_PATH, JSON.str_
+      writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));  // Fixed the parentheses here
+      console.log(`✅ Saved ${latest.length} total winners.`);
+    } else {
+      console.log('⏸ No new winners to add.');
+    }
+
+  } catch (err) {
+    console.error('❌ Error in winner tracker:', err);
+  }
+}
+
+// Call main function
+main();
