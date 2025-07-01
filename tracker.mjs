@@ -61,5 +61,29 @@ async function main() {
     console.error('❌ Error:', err);
   }
 }
+console.log(`Found ${transactions.length} transactions`);
+
+for (const tx of transactions) {
+  if (knownSignatures.has(tx.signature)) continue;
+
+  const tokenTransfers = tx.tokenTransfers || [];
+  for (const transfer of tokenTransfers) {
+    const isFart = transfer.mint === FARTCOIN_MINT;
+    const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;
+    const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+
+    if (isFart && toOtherWallet && amount >= MIN_AMOUNT) {
+      console.log(`🎯 Winner found: ${transfer.toUserAccount} (${amount} FART)`);
+      updatedWinners.unshift({
+        address: transfer.toUserAccount,
+        amount: parseFloat(amount.toFixed(2)),
+        signature: tx.signature,
+        tx: `https://solscan.io/tx/${tx.signature}`,
+        timestamp: Date.now()
+      });
+    }
+  }
+}
+
 
 main();
