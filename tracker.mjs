@@ -1,61 +1,127 @@
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import fetch from 'node-fetch';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
-// List of winners
-const winners = [
-    { address: "AtoQ1Y6zm4NxNwie8jbrM4VjXVh6fQyqyajCKEyn5RPJ", amount: 1261.47 },
-    { address: "jjXczvExrj8ChL39PVwq54yNXFi86WKciCgvRuLdNda", amount: 1060.00 },
-    { address: "7h8CFdqynASZmFcVVEexLgPBmgTmvNF243bBAnryK8MS", amount: 1016.86 },
-    { address: "EKFxBzg8n4PbwTES5skQm2cKvxpr2g8skKYq6HKvfEWF", amount: 815.18 },
-    { address: "6SY1BdgfJkcoKKsu36bFFXJHYQB3kqpWQx2EgBD85gMo", amount: 440.92 },
-    { address: "Fus1BvxRyiMxSokafiDE21cJVS3GFCeasc3kWUBWgzi7", amount: 472.39 },
-    { address: "HLgkhbN966cCCrX9xDsJofmgmzbKDjh6Sodecaq14gfz", amount: 255.74 },
-    { address: "2yg76DQnzdLVc6zGp4GB3ankn66L1fZJuBcWaoo1TwRx", amount: 275.40 }
-];
+// === CONFIG ===
+const HELIUS_API_URL = 'https://mainnet.helius-rpc.com/';
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
+const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
+const DECIMALS = 6;
+const MIN_AMOUNT = 10;
+const WINNERS_PATH = './winners.json';
 
-// Initialize Solana connection
-const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
+// === RPC Request Setup ===
+const jsonRpcBody = {
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getSignaturesForAddress",
+  "params": [DISTRIBUTION_WALLET, { "limit": 20 }]
+};
 
-// Fetch transactions for a given wallet address
-async function getTransactions(walletAddress) {
-    const publicKey = new PublicKey(walletAddress);
-    const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 1000 });
+async function fetchExistingWinners() {
+  if (existsSync(WINNERS_PATH)) {
+    const data = readFileSync(WINNERS_PATH, 'utf-8');
+    return JSON.parse(data);
+  }
+  return [];
+}
+
+async function fetchTransactions() {
+  try {
+    const res = await fetch(HELIUS_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${HELIUS_API_KEY}`,
+      },
+      body: JSON.stringify(jsonRpcBody),
+    });
     
-    for (const signatureData of signatures) {
-        const transaction = await connection.getTransaction(signatureData.signature);
-        
-        // Check if the transaction involves any winners
-        checkForWinners(transaction);
+    const data = await res.json();
+    
+    if (data.result) {
+      return data.result;  // Contains the list of transaction signatures
     }
+    console.error('Error fetching transactions:', data.error);
+    return [];
+  } catch (err) {
+    console.error('Error in RPC request:', err);
+    return [];
+  }
 }
 
-// Check if the transaction involves any of the winner's addresses
-function checkForWinners(transaction) {
-    if (!transaction) return;
+async function main() {
+  try {
+    const transactions = await fetchTransactions();
 
-    const { transaction: { message } } = transaction;
+    console.log(`📦 Fetched ${transactions.length} transactions from Helius`);
 
-    // Loop through each instruction in the transaction to see if any winner's address is involved
-    for (const instruction of message.instructions) {
-        const senderAddress = instruction.keys[0]?.pubkey.toBase58();  // Sender address
-        const receiverAddress = instruction.keys[1]?.pubkey.toBase58(); // Receiver address
-        
-        // Check if sender or receiver is one of the winners
-        if (isWinner(senderAddress) || isWinner(receiverAddress)) {
-            console.log('Winner Transaction Detected: ', {
-                senderAddress,
-                receiverAddress,
-                signature: transaction.transaction.signatures[0],
-                blockTime: transaction.blockTime
-            });
+    const existing = await fetchExistingWinners();
+    const knownSignatures = new Set(existing.map(w => w.signature));
+    const updatedWinners = [...existing];
+
+    for (const tx of transactions) {
+      console.log(`🔍 TX: ${tx.signature}`);
+
+      if (knownSignatures.has(tx.signature)) {
+        console.log(`   ⏭ Already recorded`);
+        continue;
+      }
+
+      const tokenTransfers = tx.tokenTransfers || [];
+      if (!tokenTransfers.length) {
+        console.log("   ⚠️  No token transfers");
+        continue;
+      }
+
+      for (const transfer of tokenTransfers) {
+        const isFart = transfer.mint === FARTCOIN_MINT;
+        const fromDistributionWallet = transfer.fromUserAccount === DISTRIBUTION_WALLET;  // Ensure it's from distribution wallet
+        const toOtherWallet = transfer.toUserAccount !== DISTRIBUTION_WALLET;  // Ensure it's going to another wallet
+
+        // Direct amount without unnecessary division
+        const rawAmount = transfer.tokenAmount; // Direct value without dividing
+        const amount = Number(rawAmount); // No division needed if it’s already in the correct format
+
+        console.log(`   ➤ Mint: ${transfer.mint}`);
+        console.log(`     From: ${transfer.fromUserAccount}`);
+        console.log(`     To: ${transfer.toUserAccount}`);
+        console.log(`     Raw Amount: ${rawAmount} → ${amount} FART`);
+        console.log(`     isFart: ${isFart}`);
+        console.log(`     fromDistributionWallet: ${fromDistributionWallet}`);
+        console.log(`     toOtherWallet: ${toOtherWallet}`);
+        console.log(`     amount >= MIN_AMOUNT: ${amount >= MIN_AMOUNT}`);
+
+        // Only proceed if:
+        // 1. Transfer is from the distribution wallet
+        // 2. Transfer is to a different wallet (not the distribution wallet)
+        // 3. The amount is greater than or equal to MIN_AMOUNT
+        if (isFart && fromDistributionWallet && toOtherWallet && amount >= MIN_AMOUNT) {
+          console.log(`   ✅ WINNER! ${transfer.toUserAccount} gets ${amount} FART`);
+          updatedWinners.unshift({
+            address: transfer.toUserAccount,
+            amount: parseFloat(amount.toFixed(2)),
+            signature: tx.signature,
+            tx: `https://solscan.io/tx/${tx.signature}`,
+            timestamp: Date.now()
+          });
+        } else {
+          console.log("   🚫 Not eligible");
         }
+      }
     }
+
+    if (updatedWinners.length !== existing.length) {
+      const latest = updatedWinners.slice(0, 100);
+      writeFileSync(WINNERS_PATH, JSON.stringify(latest, null, 2));
+      console.log(`✅ Saved ${latest.length} total winners.`);
+    } else {
+      console.log('⏸ No new winners to add.');
+    }
+  } catch (err) {
+    console.error('❌ Error in winner tracker:', err);
+  }
 }
 
-// Check if an address is one of the winners
-function isWinner(address) {
-    return winners.some(winner => winner.address === address);
-}
-
-// Start fetching transactions for the wallet
-const walletAddress = 'your_wallet_address_here';
-getTransactions(walletAddress);
+// Call main function
+main();
