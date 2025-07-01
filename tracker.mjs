@@ -1,15 +1,16 @@
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
-// Solana RPC URL
-const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
+const walletAddress = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE'; // Distribution wallet address
+const fartCoinMintAddress = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump'; // FartCoin mint address
+const minAmountInLamports = 10 * Math.pow(10, 6); // 10 FartCoin = 10,000,000 lamports
 
-// Wallet address (use the one you shared)
-const walletAddress = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE";
+// Solana API endpoint
+const SOLANA_API_URL = 'https://api.mainnet-beta.solana.com';
 
-// Function to fetch transaction signatures (all past transactions)
-async function fetchTransactionSignatures(walletAddress, limit = 1000) {
+// Function to fetch transactions for a wallet
+async function getTransactions(walletAddress) {
   try {
-    const response = await fetch(SOLANA_RPC_URL, {
+    const response = await fetch(SOLANA_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -18,31 +19,28 @@ async function fetchTransactionSignatures(walletAddress, limit = 1000) {
         jsonrpc: '2.0',
         id: 1,
         method: 'getSignaturesForAddress',
-        params: [walletAddress, { limit }],
+        params: [walletAddress, { limit: 1000 }], // Fetching the last 1000 transactions
       }),
     });
 
     const data = await response.json();
 
-    // Log the response to check its structure
-    console.log("Response from getSignaturesForAddress:", data);
-
-    if (data.result) {
-      return data.result;
-    } else {
-      console.error('No result field in the response:', data);
+    if (data.error) {
+      console.error('Error fetching transactions:', data.error);
       return [];
     }
+
+    return data.result || [];
   } catch (error) {
-    console.error('Error fetching transaction signatures:', error);
+    console.error('Error:', error);
     return [];
   }
 }
 
-// Function to fetch detailed transaction info for each signature
-async function fetchTransactionDetails(signature) {
+// Function to fetch transaction details
+async function getTransactionDetails(signature) {
   try {
-    const response = await fetch(SOLANA_RPC_URL, {
+    const response = await fetch(SOLANA_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,46 +49,52 @@ async function fetchTransactionDetails(signature) {
         jsonrpc: '2.0',
         id: 1,
         method: 'getTransaction',
-        params: [signature],
+        params: [signature, { encoding: 'json' }],
       }),
     });
 
     const data = await response.json();
-    
-    // Log the response to check the transaction details structure
-    console.log(`Response for transaction ${signature}:`, data);
-
-    return data.result;
+    return data.result || {};
   } catch (error) {
-    console.error('Error fetching transaction details for signature', signature, error);
-    return null;
+    console.error('Error fetching transaction details:', error);
+    return {};
   }
 }
 
-// Function to get all past transactions (signatures + detailed info)
-async function getAllPastTransactions(walletAddress) {
-  console.log(`Fetching transaction signatures for wallet: ${walletAddress}`);
-  
-  // Fetch transaction signatures (up to the limit)
-  const signatures = await fetchTransactionSignatures(walletAddress);
+// Function to filter transactions and get outgoing FartCoin transfers greater than 10
+async function trackFartCoinTransactions() {
+  const transactions = await getTransactions(walletAddress);
 
-  if (!signatures || signatures.length === 0) {
-    console.log('No transactions found for this wallet.');
-    return;
-  }
+  const filteredTransactions = [];
 
-  console.log(`Found ${signatures.length} transactions. Fetching details...`);
-
-  // Fetch details for each transaction signature
-  for (const signatureInfo of signatures) {
-    const signature = signatureInfo.signature;
-    const transactionDetails = await fetchTransactionDetails(signature);
+  for (const tx of transactions) {
+    const txDetails = await getTransactionDetails(tx.signature);
     
-    if (transactionDetails) {
-      console.log(`Transaction ${signature}:`, transactionDetails);
+    if (txDetails.meta && txDetails.meta.preTokenBalances) {
+      for (const balance of txDetails.meta.preTokenBalances) {
+        // Check if the transaction involves FartCoin mint address
+        if (balance.mint === fartCoinMintAddress && balance.uiAmount && balance.uiAmount > 10) {
+          // Check if the transaction is an outgoing transaction
+          const postBalances = txDetails.meta.postTokenBalances;
+          const outgoingTransaction = postBalances.some(postBalance => 
+            postBalance.mint === fartCoinMintAddress && postBalance.uiAmount < balance.uiAmount
+          );
+
+          if (outgoingTransaction) {
+            filteredTransactions.push({
+              signature: tx.signature,
+              blockTime: tx.blockTime,
+              amount: balance.uiAmount,
+            });
+          }
+        }
+      }
     }
   }
+
+  console.log('Filtered Outgoing FartCoin Transactions (Greater than 10 FartCoin):');
+  console.table(filteredTransactions);
 }
 
-// Run the script to fetch all past transactions for the wallet
-getAllPastTransactions(walletAddress);
+// Start tracking FartCoin transactions
+trackFartCoinTransactions();
