@@ -73,8 +73,17 @@ async function main() {
           const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
 
           // Safely get amount
-          const rawAmount = transfer.tokenAmount?.amount;
-          const amount = rawAmount ? Number(rawAmount) / Math.pow(10, DECIMALS) : 0;
+          let amount = 0;
+          if (transfer.tokenAmount?.amount) {
+            amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+          } else if (tx.postTokenBalances) {
+            const balanceChange = tx.postTokenBalances.find(
+              b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount
+            );
+            if (balanceChange?.uiTokenAmount?.uiAmount) {
+              amount = balanceChange.uiTokenAmount.uiAmount;
+            }
+          }
 
           if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
             console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
