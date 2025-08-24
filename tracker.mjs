@@ -1,68 +1,86 @@
-// tracker.mjs
+#!/usr/bin/env node
 import fetch from "node-fetch";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 
 // === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
-const DISTRIBUTION_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE"; // your multisig
+const MULTISIG_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE"; // your multisig
 const WINNERS_FILE = "./winners.json";
-const MAX_TXS = 100;
+const FETCH_LIMIT = 100; // number of txs to fetch at once
 
-// === Load previous winners ===
-let previousWinners = [];
+// Load existing winners
+let winners = [];
 if (existsSync(WINNERS_FILE)) {
-  previousWinners = JSON.parse(readFileSync(WINNERS_FILE, "utf-8"));
+  winners = JSON.parse(readFileSync(WINNERS_FILE));
 }
 
-// === Fetch transactions ===
-console.log("📦 Fetching transactions from Helius...");
-const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions/?api-key=${HELIUS_API_KEY}&limit=${MAX_TXS}`;
-const res = await fetch(url);
-const data = await res.json();
+// Fetch transactions from Helius
+async function fetchTransactions() {
+  const url = `https://api.helius.xyz/v0/transactions/?api-key=${HELIUS_API_KEY}&limit=${FETCH_LIMIT}`;
+  console.log("📦 Fetching transactions from Helius...");
+  
+  const res = await fetch(url);
+  const data = await res.json();
+  
+  if (!Array.isArray(data)) {
+    console.error("❌ Unexpected API response:", data);
+    return [];
+  }
 
-if (!Array.isArray(data)) {
-  console.error("❌ Unexpected API response:", data);
-  process.exit(1);
+  console.log(`📦 Total transactions fetched: ${data.length}`);
+  return data;
 }
 
-console.log(`📦 Total transactions fetched: ${data.length}`);
+// Extract winners
+function extractWinners(txs) {
+  const newWinners = [];
 
-// === Extract winners ===
-const newWinners = [];
+  for (const tx of txs) {
+    if (!tx || !tx.instructions) continue;
 
-for (const tx of data) {
-  if (!tx || !tx.parsed || !tx.parsed.instructions) continue;
-
-  for (const instr of tx.parsed.instructions) {
-    // Check for transfer to your multisig
-    if (
-      (instr.type === "transferChecked" || instr.type === "transfer") &&
-      instr.info.destination === DISTRIBUTION_WALLET
-    ) {
-      const winner = {
-        address: instr.info.source,
-        amount: instr.info.tokenAmount?.uiAmount || 0,
-        signature: tx.signature,
-        tx: `https://solscan.io/tx/${tx.signature}`,
-        timestamp: tx.blockTime ? tx.blockTime * 1000 : Date.now(),
-      };
-
-      // Skip duplicates
-      if (!previousWinners.find(w => w.signature === winner.signature)) {
-        newWinners.push(winner);
-        console.log("🏆 Winner found:", winner);
+    for (const ix of tx.instructions) {
+      // We only care about token transfers to our multisig
+      if (ix.type === "transferChecked" || ix.type === "transfer") {
+        const info = ix.info;
+        if (info.destination === MULTISIG_WALLET) {
+          const existing = winners.find(w => w.signature === tx.signature);
+          if (!existing) {
+            newWinners.push({
+              address: info.source,
+              amount: info.tokenAmount?.uiAmount || 0,
+              signature: tx.signature,
+              tx: `https://solscan.io/tx/${tx.signature}`,
+              timestamp: tx.timestamp
+            });
+          }
+        }
       }
     }
   }
+
+  return newWinners;
 }
 
-// === Merge and save ===
-if (newWinners.length > 0) {
-  const allWinners = [...previousWinners, ...newWinners];
-  writeFileSync(WINNERS_FILE, JSON.stringify(allWinners, null, 2));
-  console.log(`✅ ${newWinners.length} new winners added.`);
-} else {
-  console.log("⏸ No new winners to add.");
+// Save winners to file
+function saveWinners(newWinners) {
+  if (newWinners.length > 0) {
+    winners = [...winners, ...newWinners].sort((a, b) => a.timestamp - b.timestamp);
+    writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
+    console.log(`🏆 Added ${newWinners.length} new winners.`);
+  } else {
+    console.log("⏸ No new winners to add.");
+  }
 }
 
-console.log("✅ Tracker script completed.");
+// Main
+(async () => {
+  try {
+    const txs = await fetchTransactions();
+    const newWinners = extractWinners(txs);
+    saveWinners(newWinners);
+    console.log("✅ Tracker script completed.");
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
+})();
