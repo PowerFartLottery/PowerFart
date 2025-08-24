@@ -66,20 +66,18 @@ async function main() {
 
         if (!FETCH_ALL_HISTORY && knownSignatures.has(tx.signature)) continue;
 
-        // === FIXED: handle transferChecked format from new Helius API ===
-        let tokenTransfers = tx.tokenTransfers || [];
-        if (!tokenTransfers.length && tx.type === 'transferChecked' && tx.info) {
-          tokenTransfers = [tx.info]; // wrap single info as array
-        }
-
+        const tokenTransfers = tx.tokenTransfers || [];
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET || transfer.source === DISTRIBUTION_WALLET;
-          const toOtherWallet = (transfer.toUserAccount || transfer.destination) && (transfer.toUserAccount || transfer.destination) !== DISTRIBUTION_WALLET;
-          const amountRaw = transfer.tokenAmount?.amount || transfer.tokenAmount?.uiAmount || null;
+          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
+          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
+
+          // Fix: handle null or missing amount
+          const amountRaw = transfer.tokenAmount?.amount ?? transfer.tokenAmount?.uiAmount ?? null;
           const amount = amountRaw !== null ? Number(amountRaw) / Math.pow(10, DECIMALS) : null;
 
-          if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
+          // Only add winner if amount is valid
+          if (isFart && isOutgoing && toOtherWallet && amount !== null && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
             const winnerAddress = transfer.toUserAccount || transfer.destination;
             console.log(`🎯 Winner: ${winnerAddress} (${amount} FART)`);
             updatedWinners.unshift({
@@ -98,6 +96,7 @@ async function main() {
         keepGoing = false;
       }
 
+      // For first run, continue fetching until transactions.length === 0
       if (FETCH_ALL_HISTORY && transactions.length === 0) {
         keepGoing = false;
       }
