@@ -1,5 +1,5 @@
 // tracker.mjs
-// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
+// Simplified Fartcoin Winner Tracker (ESM version)
 
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
@@ -12,9 +12,6 @@ if (!HELIUS_API_KEY) {
 }
 
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
-const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
-const DECIMALS = 6;
-const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
 
@@ -63,51 +60,19 @@ async function main() {
 
       for (const tx of transactions) {
         before = tx.signature; // paginate
-
         if (!FETCH_ALL_HISTORY && knownSignatures.has(tx.signature)) continue;
 
-        // === ENHANCED TRANSFER EXTRACTION ===
-        const tokenTransfers = [];
-
-        // old-style tokenTransfers
-        if (Array.isArray(tx.tokenTransfers)) {
-          tokenTransfers.push(...tx.tokenTransfers);
-        }
-
-        // Helius SPL transfer events
-        if (Array.isArray(tx.events?.splTransfers)) {
-          tx.events.splTransfers.forEach(ev => {
-            if (ev.mint === FARTCOIN_MINT) {
-              tokenTransfers.push({
-                mint: ev.mint,
-                fromUserAccount: ev.from,
-                toUserAccount: ev.to,
-                tokenAmount: { amount: ev.amount.toString() }
-              });
-            }
+        // take first non-distribution wallet as winner (simplified)
+        const winnerAddress = tx.toAddress || tx.to || 'unknown';
+        if (winnerAddress && winnerAddress !== DISTRIBUTION_WALLET) {
+          console.log(`🎯 Winner: ${winnerAddress}`);
+          updatedWinners.unshift({
+            address: winnerAddress,
+            amount: null, // we skip amount
+            signature: tx.signature,
+            tx: `https://solscan.io/tx/${tx.signature}`,
+            timestamp: tx.timestamp * 1000 || Date.now()
           });
-        }
-
-        // === PROCESS TRANSFERS ===
-        for (const transfer of tokenTransfers) {
-          const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
-
-          const rawAmount = transfer.tokenAmount?.amount;
-          if (!rawAmount) continue; // skip if amount missing
-          const amount = Number(rawAmount) / Math.pow(10, DECIMALS);
-
-          if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
-            updatedWinners.unshift({
-              address: transfer.toUserAccount,
-              amount: parseFloat(amount.toFixed(2)),
-              signature: tx.signature,
-              tx: `https://solscan.io/tx/${tx.signature}`,
-              timestamp: tx.timestamp * 1000 || Date.now()
-            });
-          }
         }
       }
 
