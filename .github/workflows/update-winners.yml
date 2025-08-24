@@ -3,7 +3,7 @@ name: Update Fartcoin Winners
 on:
   schedule:
     - cron: "*/5 * * * *" # every 5 minutes
-  workflow_dispatch: # allows manual trigger
+  workflow_dispatch: # manual trigger
 
 jobs:
   update-winners:
@@ -19,10 +19,12 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install || true
 
       - name: Run Fartcoin tracker
-        run: node tracker.mjs
+        run: |
+          node tracker.mjs
+          echo "✅ Tracker script completed."
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
 
@@ -30,8 +32,15 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
+          # check if winners.json has changes
           git add winners.json
-          git diff --cached --quiet || git commit -m "Update winners.json via GitHub Actions"
-          git push
+          if git diff --cached --quiet; then
+            echo "⏸ No new winners to commit."
+          else
+            git commit -m "Update winners.json via GitHub Actions"
+            git push
+            echo "✅ Winners.json updated and pushed."
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
