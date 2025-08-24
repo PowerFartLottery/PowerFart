@@ -1,71 +1,89 @@
-// tracker.mjs
-// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
+#!/usr/bin/env node
+import fs from "fs/promises";
+import fetch from "node-fetch";
 
-import fetch from 'node-fetch';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+// =============================
+// Config
+// =============================
+const TEAM_WALLET = "YOUR_TEAM_WALLET_HERE"; // <-- replace with your real team wallet
+const FART_MINT = "YOUR_FART_TOKEN_MINT_HERE"; // <-- replace with your FART token mint
+const API_KEY = process.env.HELIUS_API_KEY;
 
-// === CONFIG ===
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
-const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
-const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
-const DECIMALS = 6;
-const MIN_AMOUNT = 10;
-const WINNERS_PATH = './winners.json';
+// =============================
+// Fetch all winners
+// =============================
+async function fetchAllWinners() {
+  let allTransfers = [];
+  let before = undefined;
 
-// Use the raw transactions endpoint
-const HELIUS_URL = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=20`;
+  while (true) {
+    const url = new URL(
+      `https://api.helius.xyz/v0/addresses/${TEAM_WALLET}/transfers`
+    );
+    url.searchParams.set("api-key", API_KEY);
+    url.searchParams.set("limit", "100"); // max per page
+    if (before) url.searchParams.set("before", before);
 
-async function fetchExistingWinners() {
-  if (existsSync(WINNERS_PATH)) {
-    const data = readFileSync(WINNERS_PATH, 'utf-8');
-    return JSON.parse(data);
-  }
-  return [];
-}
-
-async function main() {
-  try {
-    const res = await fetch(HELIUS_URL);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      console.error("Failed to fetch:", res.status, await res.text());
+      break;
+    }
     const data = await res.json();
 
-    const transactions = data || [];
-    console.log(`📦 Fetched ${transactions.length} transactions from Helius`);
+    if (!data || data.length === 0) break;
 
-    const existing = await fetchExistingWinners();
-    const knownSignatures = new Set(existing.map(w => w.signature));
-    const updatedWinners = [...existing];
+    // Filter: outgoing FART transfers only
+    const winners = data.filter(
+      (t) =>
+        t.type === "TRANSFER" &&
+        t.tokenTransfers?.some(
+          (tt) =>
+            tt.fromUserAccount === TEAM_WALLET &&
+            tt.mint === FART_MINT
+        )
+    );
 
-    for (const tx of transactions) {
-      if (knownSignatures.has(tx.signature)) continue;
+    allTransfers.push(...winners);
 
-      const tokenTransfers = tx.tokenTransfers || [];
-      for (const transfer of tokenTransfers) {
-        const isFart = transfer.mint === FARTCOIN_MINT;
-        const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET; // ✅ Fix: outgoing transfers
-        const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
-        const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+    // Prepare next page
+    before = data[data.length - 1].signature;
+  }
 
-        if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-          console.log(`🎯 New winner: ${transfer.toUserAccount} (${amount} FART)`);
-          updatedWinners.unshift({
-            address: transfer.toUserAccount,
-            amount: parseFloat(amount.toFixed(2)),
-            signature: tx.signature,
-            tx: `https://solscan.io/tx/${tx.signature}`,
-            timestamp: Date.now()
-          });
-        }
+  // Map into simplified objects
+  return allTransfers.map((t) => {
+    const fart = t.tokenTransfers.find((tt) => tt.mint === FART_MINT);
+    return {
+      address: fart.toUserAccount,
+      amount: fart.tokenAmount / 10 ** fart.decimals,
+      tx: t.signature,
+    };
+  });
+}
+
+// =============================
+// Main
+// =============================
+async function main() {
+  try {
+    const winners = await fetchAllWinners();
+
+    // Deduplicate
+    const unique = [];
+    const seen = new Set();
+    for (const w of winners) {
+      const key = `${w.address}-${w.amount}-${w.tx}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(w);
       }
     }
 
-    if (updatedWinners.length !== existing.length) {
-      writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
-      console.log(`✅ Saved ${updatedWinners.length} total winners.`);
-    } else {
-      console.log('⏸ No new winners to add.');
-    }
+    await fs.writeFile("winners.json", JSON.stringify(unique, null, 2));
+    console.log(`Saved ${unique.length} winners to winners.json`);
   } catch (err) {
-    console.error('❌ Error in winner tracker:', err);
+    console.error("Error in tracker:", err);
+    process.exit(1);
   }
 }
 
