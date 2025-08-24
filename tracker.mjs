@@ -18,6 +18,9 @@ const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
 
+// First run fetches all history
+const FETCH_ALL_HISTORY = !existsSync(WINNERS_PATH);
+
 // fetch existing winners from file
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
@@ -32,7 +35,7 @@ async function fetchExistingWinners() {
   return [];
 }
 
-// fetch paginated txs
+// fetch paginated transactions
 async function fetchAllTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
   if (before) url += `&before=${before}`;
@@ -55,23 +58,35 @@ async function main() {
       const transactions = await fetchAllTransactions(before);
       if (!transactions.length) break;
 
-      console.log(`📦 Fetched ${transactions.length} txs`);
+      console.log(`📦 Fetched ${transactions.length} transactions`);
       fetched += transactions.length;
 
       for (const tx of transactions) {
-        before = tx.signature;
+        before = tx.signature; // paginate
 
-        if (knownSignatures.has(tx.signature)) continue;
+        if (!FETCH_ALL_HISTORY && knownSignatures.has(tx.signature)) continue;
 
         const tokenTransfers = tx.tokenTransfers || [];
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
-          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
+          // Safely get amount
+          let amount = 0;
+          if (transfer.tokenAmount?.amount) {
+            amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+          } else if (tx.postTokenBalances) {
+            const balanceChange = tx.postTokenBalances.find(
+              b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount
+            );
+            if (balanceChange?.uiTokenAmount?.uiAmount) {
+              amount = balanceChange.uiTokenAmount.uiAmount;
+            }
+          }
+
+          if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
+            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
             updatedWinners.unshift({
               address: transfer.toUserAccount,
               amount: parseFloat(amount.toFixed(2)),
@@ -83,25 +98,31 @@ async function main() {
         }
       }
 
-      // stop paginating if no new winners found in this batch
-      if (transactions.every(tx => knownSignatures.has(tx.signature))) {
+      // stop paginating if no new transactions
+      if (!FETCH_ALL_HISTORY && transactions.every(tx => knownSignatures.has(tx.signature))) {
+        keepGoing = false;
+      }
+
+      // For first run, continue fetching until transactions.length === 0
+      if (FETCH_ALL_HISTORY && transactions.length === 0) {
         keepGoing = false;
       }
     }
 
-    // save only last MAX_WINNERS winners to keep file small
+    // trim to last MAX_WINNERS
     const trimmed = updatedWinners.slice(0, MAX_WINNERS);
 
     const hasChanges = JSON.stringify(trimmed, null, 2) !== JSON.stringify(existing, null, 2);
     if (hasChanges) {
       writeFileSync(WINNERS_PATH, JSON.stringify(trimmed, null, 2));
-      console.log(`✅ Saved ${trimmed.length} total winners (fetched ${fetched} txs).`);
+      console.log(`✅ Saved ${trimmed.length} winners (fetched ${fetched} txs).`);
     } else {
       console.log('⏸ No new winners to add.');
     }
+
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
-    process.exit(1); // ensure Actions marks the run as failed if something critical breaks
+    process.exit(1);
   }
 }
 
