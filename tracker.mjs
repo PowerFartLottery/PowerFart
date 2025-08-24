@@ -1,5 +1,5 @@
 // tracker.mjs
-// Simplified Fartcoin Winner Tracker (ESM version)
+// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
 
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
@@ -12,11 +12,11 @@ if (!HELIUS_API_KEY) {
 }
 
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
+const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
+const DECIMALS = 6;
+const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
-
-// First run fetches all history
-const FETCH_ALL_HISTORY = !existsSync(WINNERS_PATH);
 
 // fetch existing winners from file
 async function fetchExistingWinners() {
@@ -32,7 +32,7 @@ async function fetchExistingWinners() {
   return [];
 }
 
-// fetch paginated transactions
+// fetch paginated txs
 async function fetchAllTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
   if (before) url += `&before=${before}`;
@@ -55,52 +55,53 @@ async function main() {
       const transactions = await fetchAllTransactions(before);
       if (!transactions.length) break;
 
-      console.log(`📦 Fetched ${transactions.length} transactions`);
+      console.log(`📦 Fetched ${transactions.length} txs`);
       fetched += transactions.length;
 
       for (const tx of transactions) {
-        before = tx.signature; // paginate
-        if (!FETCH_ALL_HISTORY && knownSignatures.has(tx.signature)) continue;
+        before = tx.signature;
 
-        // take first non-distribution wallet as winner (simplified)
-        const winnerAddress = tx.toAddress || tx.to || 'unknown';
-        if (winnerAddress && winnerAddress !== DISTRIBUTION_WALLET) {
-          console.log(`🎯 Winner: ${winnerAddress}`);
-          updatedWinners.unshift({
-            address: winnerAddress,
-            amount: null, // we skip amount
-            signature: tx.signature,
-            tx: `https://solscan.io/tx/${tx.signature}`,
-            timestamp: tx.timestamp * 1000 || Date.now()
-          });
+        if (knownSignatures.has(tx.signature)) continue;
+
+        const tokenTransfers = tx.tokenTransfers || [];
+        for (const transfer of tokenTransfers) {
+          const isFart = transfer.mint === FARTCOIN_MINT;
+          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
+          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
+          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+
+          if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
+            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
+            updatedWinners.unshift({
+              address: transfer.toUserAccount,
+              amount: parseFloat(amount.toFixed(2)),
+              signature: tx.signature,
+              tx: `https://solscan.io/tx/${tx.signature}`,
+              timestamp: tx.timestamp * 1000 || Date.now()
+            });
+          }
         }
       }
 
-      // stop paginating if no new transactions
-      if (!FETCH_ALL_HISTORY && transactions.every(tx => knownSignatures.has(tx.signature))) {
-        keepGoing = false;
-      }
-
-      // For first run, continue fetching until transactions.length === 0
-      if (FETCH_ALL_HISTORY && transactions.length === 0) {
+      // stop paginating if no new winners found in this batch
+      if (transactions.every(tx => knownSignatures.has(tx.signature))) {
         keepGoing = false;
       }
     }
 
-    // trim to last MAX_WINNERS
+    // save only last MAX_WINNERS winners to keep file small
     const trimmed = updatedWinners.slice(0, MAX_WINNERS);
 
     const hasChanges = JSON.stringify(trimmed, null, 2) !== JSON.stringify(existing, null, 2);
     if (hasChanges) {
       writeFileSync(WINNERS_PATH, JSON.stringify(trimmed, null, 2));
-      console.log(`✅ Saved ${trimmed.length} winners (fetched ${fetched} txs).`);
+      console.log(`✅ Saved ${trimmed.length} total winners (fetched ${fetched} txs).`);
     } else {
       console.log('⏸ No new winners to add.');
     }
-
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
-    process.exit(1);
+    process.exit(1); // ensure Actions marks the run as failed if something critical breaks
   }
 }
 
