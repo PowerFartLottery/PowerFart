@@ -16,7 +16,7 @@ if (existsSync(WINNERS_FILE)) {
 
 // === Fetch transactions ===
 console.log("📦 Fetching transactions from Helius...");
-const url = `https://api.helius.xyz/v0/transactions?api-key=${HELIUS_API_KEY}&limit=${MAX_TXS}`;
+const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions/?api-key=${HELIUS_API_KEY}&limit=${MAX_TXS}`;
 const res = await fetch(url);
 const data = await res.json();
 
