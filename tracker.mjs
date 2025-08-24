@@ -1,4 +1,6 @@
 // tracker.mjs
+// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
+
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
@@ -15,9 +17,11 @@ const DECIMALS = 6;
 const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
+
+// First run fetches all history
 const FETCH_ALL_HISTORY = !existsSync(WINNERS_PATH);
 
-// fetch existing winners
+// fetch existing winners from file
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
     const data = readFileSync(WINNERS_PATH, 'utf-8');
@@ -37,10 +41,7 @@ async function fetchAllTransactions(before = null) {
   if (before) url += `&before=${before}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Helius error: ${res.status}`);
-  const data = await res.json();
-  // log raw response for debugging if empty
-  if (!Array.isArray(data)) console.log('📥 Raw API response:', data);
-  return Array.isArray(data) ? data : [];
+  return res.json();
 }
 
 async function main() {
@@ -65,20 +66,23 @@ async function main() {
 
         if (!FETCH_ALL_HISTORY && knownSignatures.has(tx.signature)) continue;
 
-        // ensure tokenTransfers exists
-        const tokenTransfers = tx.tokenTransfers || tx.info?.tokenTransfers || [];
-        if (!tokenTransfers.length) continue; // skip if no transfers
+        // Extract token transfers from multiple possible paths
+        let tokenTransfers = tx.tokenTransfers || [];
+        if (!tokenTransfers.length && tx.info && tx.info.type === 'transferChecked') {
+          tokenTransfers = [tx.info]; // wrap single info as an array
+        }
+        if (!tokenTransfers.length) continue;
 
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
+          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET || transfer.source === DISTRIBUTION_WALLET;
+          const toOtherWallet = (transfer.toUserAccount || transfer.destination) && (transfer.toUserAccount || transfer.destination) !== DISTRIBUTION_WALLET;
           const amount = transfer.tokenAmount ? Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS) : 0;
 
           if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
+            console.log(`🎯 Winner: ${transfer.toUserAccount || transfer.destination} (${amount} FART)`);
             updatedWinners.unshift({
-              address: transfer.toUserAccount,
+              address: transfer.toUserAccount || transfer.destination,
               amount: parseFloat(amount.toFixed(2)),
               signature: tx.signature,
               tx: `https://solscan.io/tx/${tx.signature}`,
@@ -88,13 +92,20 @@ async function main() {
         }
       }
 
+      // stop paginating if no new transactions
       if (!FETCH_ALL_HISTORY && transactions.every(tx => knownSignatures.has(tx.signature))) {
         keepGoing = false;
       }
-      if (FETCH_ALL_HISTORY && transactions.length === 0) keepGoing = false;
+
+      // For first run, continue fetching until transactions.length === 0
+      if (FETCH_ALL_HISTORY && transactions.length === 0) {
+        keepGoing = false;
+      }
     }
 
+    // trim to last MAX_WINNERS
     const trimmed = updatedWinners.slice(0, MAX_WINNERS);
+
     const hasChanges = JSON.stringify(trimmed, null, 2) !== JSON.stringify(existing, null, 2);
     if (hasChanges) {
       writeFileSync(WINNERS_PATH, JSON.stringify(trimmed, null, 2));
