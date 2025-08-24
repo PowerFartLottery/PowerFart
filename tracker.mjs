@@ -6,17 +6,28 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+if (!HELIUS_API_KEY) {
+  console.error('❌ Helius API key is missing! Set HELIUS_API_KEY in secrets.');
+  process.exit(1);
+}
+
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
 const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
+const MAX_WINNERS = 500;
 
 // fetch existing winners from file
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
     const data = readFileSync(WINNERS_PATH, 'utf-8');
-    return JSON.parse(data);
+    try {
+      return JSON.parse(data);
+    } catch {
+      console.warn('⚠️ winners.json is corrupted. Resetting...');
+      return [];
+    }
   }
   return [];
 }
@@ -48,7 +59,7 @@ async function main() {
       fetched += transactions.length;
 
       for (const tx of transactions) {
-        before = tx.signature; // paginate
+        before = tx.signature;
 
         if (knownSignatures.has(tx.signature)) continue;
 
@@ -78,15 +89,19 @@ async function main() {
       }
     }
 
-    // save only last 500 winners to keep file small
-    if (updatedWinners.length !== existing.length) {
-      writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 500), null, 2));
-      console.log(`✅ Saved ${updatedWinners.length} total winners (fetched ${fetched} txs).`);
+    // save only last MAX_WINNERS winners to keep file small
+    const trimmed = updatedWinners.slice(0, MAX_WINNERS);
+
+    const hasChanges = JSON.stringify(trimmed, null, 2) !== JSON.stringify(existing, null, 2);
+    if (hasChanges) {
+      writeFileSync(WINNERS_PATH, JSON.stringify(trimmed, null, 2));
+      console.log(`✅ Saved ${trimmed.length} total winners (fetched ${fetched} txs).`);
     } else {
       console.log('⏸ No new winners to add.');
     }
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
+    process.exit(1); // ensure Actions marks the run as failed if something critical breaks
   }
 }
 
