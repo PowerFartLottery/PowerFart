@@ -1,36 +1,37 @@
-name: Update Winners
+name: Update Fartcoin Winners
 
 on:
   schedule:
-    - cron: "0 * * * *"
-  workflow_dispatch:
+    - cron: "*/5 * * * *" # every 5 minutes
+  workflow_dispatch: # allows manual trigger
 
-permissions:
-  contents: write
 jobs:
-  update:
+  update-winners:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '20'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: Run Winner Tracker
+      - name: Run Fartcoin tracker
         run: node tracker.mjs
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
 
-      - name: Commit updated winners.json
+      - name: Commit and push updated winners
         run: |
-          git config --global user.name "PowerFart Bot"
-          git config --global user.email "bot@powerfart.fun"
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
           git add winners.json
-          git commit -m "Update winners [auto]" || echo "No changes to commit"
+          git diff --cached --quiet || git commit -m "Update winners.json via GitHub Actions"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
