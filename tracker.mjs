@@ -85,11 +85,14 @@ async function main() {
             }
           }
 
+          // Safely round amount for display
+          const displayAmount = amount ? parseFloat(amount.toFixed(2)) : 0;
+
           if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
+            console.log(`🎯 Winner: ${transfer.toUserAccount} (${displayAmount} FART)`);
             updatedWinners.unshift({
               address: transfer.toUserAccount,
-              amount: parseFloat(amount.toFixed(2)),
+              amount: displayAmount,
               signature: tx.signature,
               tx: `https://solscan.io/tx/${tx.signature}`,
               timestamp: tx.timestamp * 1000 || Date.now()
