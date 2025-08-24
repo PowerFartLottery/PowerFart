@@ -71,10 +71,13 @@ async function main() {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
-          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+
+          // Safely get amount
+          const rawAmount = transfer.tokenAmount?.amount;
+          const amount = rawAmount ? Number(rawAmount) / Math.pow(10, DECIMALS) : 0;
 
           if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
+            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
             updatedWinners.unshift({
               address: transfer.toUserAccount,
               amount: parseFloat(amount.toFixed(2)),
