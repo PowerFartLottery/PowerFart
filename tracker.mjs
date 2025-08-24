@@ -1,62 +1,77 @@
 #!/usr/bin/env node
-import fetch from 'node-fetch';
-import { writeFileSync, existsSync, readFileSync } from 'fs';
+import fs from "fs";
+import fetch from "node-fetch";
 
-// === CONFIG ===
+// =============================
+// CONFIG
+// =============================
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
-const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump'; // Replace with actual mint
-const WINNERS_PATH = './winners.json';
-const MIN_AMOUNT = 0.01; // Minimum amount to consider a winner
+const DISTRIBUTION_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE";
+const WINNERS_FILE = "winners.json";
+const LIMIT = 100; // number of txs to fetch per call
 
-// Load previous winners
-let winners = [];
-if (existsSync(WINNERS_PATH)) {
-    winners = JSON.parse(readFileSync(WINNERS_PATH, 'utf8'));
-}
-
-// Fetch transactions from Helius
-async function fetchTxs(limit = 100) {
-    const url = `https://api.helius.xyz/v0/transactions?api-key=${HELIUS_API_KEY}&limit=${limit}`;
+// =============================
+// HELPERS
+// =============================
+async function fetchTxs(limit = LIMIT) {
+    console.log("📦 Fetching transactions...");
+    const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions/?api-key=${HELIUS_API_KEY}&limit=${limit}`;
     const res = await fetch(url);
     const data = await res.json();
+    if (!Array.isArray(data)) {
+        console.error("❌ Unexpected response from Helius:", data);
+        return [];
+    }
+    console.log(`📦 Fetched ${data.length} txs`);
     return data;
 }
 
-// Main tracker logic
+function extractWinner(tx) {
+    if (!tx || !tx.info) return null;
+    const info = tx.info;
+
+    // Only handle transferChecked type
+    if (info.type !== "transferChecked") return null;
+
+    const tokenAmount = info.tokenAmount?.uiAmount || 0;
+    return {
+        address: info.destination,
+        amount: tokenAmount,
+        signature: tx.signature || tx.txHash || "",
+        tx: tx.signature ? `https://solscan.io/tx/${tx.signature}` : "",
+        timestamp: info.timestamp || Date.now()
+    };
+}
+
+// =============================
+// MAIN
+// =============================
 (async () => {
-    console.log('📦 Fetching transactions...');
-    const txs = await fetchTxs(100);
-    console.log(`📦 Fetched ${txs.length} txs`);
+    try {
+        const txs = await fetchTxs();
 
-    const updatedWinners = [...winners];
+        const winners = txs
+            .map(extractWinner)
+            .filter(Boolean);
 
-    for (const tx of txs) {
-        if (!tx?.transactions) continue;
-
-        for (const instr of tx.transactions) {
-            // Only consider transferChecked for our mint
-            if (instr.type === 'transferChecked' && instr.info?.mint === FARTCOIN_MINT) {
-                const amount = Number(instr.info.tokenAmount?.uiAmount || 0);
-                const dest = instr.info.destination;
-                console.log(`Found transferChecked → ${dest} amount: ${amount}`);
-
-                if (amount >= MIN_AMOUNT && !updatedWinners.find(w => w.signature === tx.signature)) {
-                    updatedWinners.unshift({
-                        address: dest,
-                        amount: parseFloat(amount.toFixed(6)),
-                        signature: tx.signature,
-                        tx: `https://solscan.io/tx/${tx.signature}`,
-                        timestamp: tx.timestamp * 1000 || Date.now()
-                    });
-                }
-            }
+        let oldWinners = [];
+        if (fs.existsSync(WINNERS_FILE)) {
+            oldWinners = JSON.parse(fs.readFileSync(WINNERS_FILE, "utf-8"));
         }
+
+        // only keep new winners
+        const newWinners = winners.filter(
+            w => !oldWinners.some(o => o.signature === w.signature)
+        );
+
+        if (newWinners.length === 0) {
+            console.log("⏸ No new winners to add.");
+        } else {
+            const updatedWinners = [...oldWinners, ...newWinners];
+            fs.writeFileSync(WINNERS_FILE, JSON.stringify(updatedWinners, null, 2));
+            console.log(`✅ Added ${newWinners.length} new winners.`);
+        }
+    } catch (err) {
+        console.error("❌ Error in tracker:", err);
     }
-
-    // Keep only latest 500 winners
-    const finalWinners = updatedWinners.slice(0, 500);
-
-    // Write winners.json
-    writeFileSync(WINNERS_PATH, JSON.stringify(finalWinners, null, 2));
-    console.log(`✅ Tracker completed. Total winners: ${finalWinners.length}`);
 })();
