@@ -4,71 +4,65 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 
 // === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
-const DISTRIBUTION_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE";
-const WINNERS_FILE = "winners.json";
+const DISTRIBUTION_WALLET = "6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE"; // your multisig
+const WINNERS_FILE = "./winners.json";
+const MAX_TXS = 100;
 
-// === HELPERS ===
-const loadPreviousWinners = () => {
-  if (existsSync(WINNERS_FILE)) {
-    return JSON.parse(readFileSync(WINNERS_FILE, "utf-8"));
-  }
-  return [];
-};
+// === Load previous winners ===
+let previousWinners = [];
+if (existsSync(WINNERS_FILE)) {
+  previousWinners = JSON.parse(readFileSync(WINNERS_FILE, "utf-8"));
+}
 
-const saveWinners = (winners) => {
-  writeFileSync(WINNERS_FILE, JSON.stringify(winners, null, 2));
-};
+// === Fetch transactions ===
+console.log("📦 Fetching transactions from Helius...");
+const url = `https://api.helius.xyz/v0/transactions?api-key=${HELIUS_API_KEY}&limit=${MAX_TXS}`;
+const res = await fetch(url);
+const data = await res.json();
 
-// === MAIN ===
-const main = async () => {
-  console.log("📦 Fetching transactions from Helius...");
+if (!Array.isArray(data)) {
+  console.error("❌ Unexpected API response:", data);
+  process.exit(1);
+}
 
-  const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions/?api-key=${HELIUS_API_KEY}&limit=100`;
-  const res = await fetch(url);
-  const data = await res.json();
+console.log(`📦 Total transactions fetched: ${data.length}`);
 
-  if (!Array.isArray(data)) {
-    console.error("❌ Unexpected API response:", data);
-    return;
-  }
+// === Extract winners ===
+const newWinners = [];
 
-  console.log(`📥 Total transactions fetched: ${data.length}`);
+for (const tx of data) {
+  if (!tx || !tx.parsed || !tx.parsed.instructions) continue;
 
-  const previousWinners = loadPreviousWinners();
-  const knownSignatures = new Set(previousWinners.map((w) => w.signature));
+  for (const instr of tx.parsed.instructions) {
+    // Check for transfer to your multisig
+    if (
+      (instr.type === "transferChecked" || instr.type === "transfer") &&
+      instr.info.destination === DISTRIBUTION_WALLET
+    ) {
+      const winner = {
+        address: instr.info.source,
+        amount: instr.info.tokenAmount?.uiAmount || 0,
+        signature: tx.signature,
+        tx: `https://solscan.io/tx/${tx.signature}`,
+        timestamp: tx.blockTime ? tx.blockTime * 1000 : Date.now(),
+      };
 
-  const newWinners = [];
-
-  for (const tx of data) {
-    if (!tx || !tx.parsed || !tx.parsed.instructions) continue;
-
-    for (const instr of tx.parsed.instructions) {
-      if (instr.type === "transferChecked") {
-        const tokenAmount = instr.info.tokenAmount?.uiAmount || 0;
-        const destination = instr.info.destination;
-
-        if (!knownSignatures.has(tx.signature)) {
-          const winner = {
-            address: destination,
-            amount: tokenAmount,
-            signature: tx.signature,
-            tx: `https://solscan.io/tx/${tx.signature}`,
-            timestamp: tx.timestamp || Date.now(),
-          };
-          newWinners.push(winner);
-        }
+      // Skip duplicates
+      if (!previousWinners.find(w => w.signature === winner.signature)) {
+        newWinners.push(winner);
+        console.log("🏆 Winner found:", winner);
       }
     }
   }
+}
 
-  if (newWinners.length > 0) {
-    console.log(`🏆 Winners extracted: ${newWinners.length}`);
-    const allWinners = [...previousWinners, ...newWinners];
-    saveWinners(allWinners);
-    console.log("✅ winners.json updated.");
-  } else {
-    console.log("⏸ No new winners to add.");
-  }
-};
+// === Merge and save ===
+if (newWinners.length > 0) {
+  const allWinners = [...previousWinners, ...newWinners];
+  writeFileSync(WINNERS_FILE, JSON.stringify(allWinners, null, 2));
+  console.log(`✅ ${newWinners.length} new winners added.`);
+} else {
+  console.log("⏸ No new winners to add.");
+}
 
-main().catch((err) => console.error("❌ Error running tracker:", err));
+console.log("✅ Tracker script completed.");
