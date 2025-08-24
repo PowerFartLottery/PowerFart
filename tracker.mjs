@@ -66,22 +66,42 @@ async function main() {
 
         if (!FETCH_ALL_HISTORY && knownSignatures.has(tx.signature)) continue;
 
-        const tokenTransfers = tx.tokenTransfers || [];
+        // === ENHANCED TRANSFER EXTRACTION ===
+        const tokenTransfers = [];
+
+        // old-style tokenTransfers
+        if (Array.isArray(tx.tokenTransfers)) {
+          tokenTransfers.push(...tx.tokenTransfers);
+        }
+
+        // Helius SPL transfer events
+        if (Array.isArray(tx.events?.splTransfers)) {
+          tx.events.splTransfers.forEach(ev => {
+            if (ev.mint === FARTCOIN_MINT) {
+              tokenTransfers.push({
+                mint: ev.mint,
+                fromUserAccount: ev.from,
+                toUserAccount: ev.to,
+                tokenAmount: { amount: ev.amount.toString() }
+              });
+            }
+          });
+        }
+
+        // === PROCESS TRANSFERS ===
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
 
-          // Fix: handle null or missing amount
-          const amountRaw = transfer.tokenAmount?.amount ?? transfer.tokenAmount?.uiAmount ?? null;
-          const amount = amountRaw !== null ? Number(amountRaw) / Math.pow(10, DECIMALS) : null;
+          const rawAmount = transfer.tokenAmount?.amount;
+          if (!rawAmount) continue; // skip if amount missing
+          const amount = Number(rawAmount) / Math.pow(10, DECIMALS);
 
-          // Only add winner if amount is valid
-          if (isFart && isOutgoing && toOtherWallet && amount !== null && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            const winnerAddress = transfer.toUserAccount || transfer.destination;
-            console.log(`🎯 Winner: ${winnerAddress} (${amount} FART)`);
+          if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
+            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
             updatedWinners.unshift({
-              address: winnerAddress,
+              address: transfer.toUserAccount,
               amount: parseFloat(amount.toFixed(2)),
               signature: tx.signature,
               tx: `https://solscan.io/tx/${tx.signature}`,
