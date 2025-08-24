@@ -72,27 +72,28 @@ async function main() {
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
 
-          // Safely get amount
+          // SAFELY calculate the FART amount sent
           let amount = 0;
+
           if (transfer.tokenAmount?.amount) {
             amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
-          } else if (tx.postTokenBalances) {
-            const balanceChange = tx.postTokenBalances.find(
-              b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount
-            );
-            if (balanceChange?.uiTokenAmount?.uiAmount) {
-              amount = balanceChange.uiTokenAmount.uiAmount;
-            }
+          } else if (tx.preTokenBalances && tx.postTokenBalances) {
+            const pre = tx.preTokenBalances.find(b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount);
+            const post = tx.postTokenBalances.find(b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount);
+
+            const preAmount = pre?.uiTokenAmount?.uiAmount || 0;
+            const postAmount = post?.uiTokenAmount?.uiAmount || 0;
+
+            amount = postAmount - preAmount;
           }
 
-          // Safely round amount for display
-          const displayAmount = amount ? parseFloat(amount.toFixed(2)) : 0;
+          amount = parseFloat(amount.toFixed(2));
 
           if (isFart && isOutgoing && toOtherWallet && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${displayAmount} FART)`);
+            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount.toFixed(2)} FART)`);
             updatedWinners.unshift({
               address: transfer.toUserAccount,
-              amount: displayAmount,
+              amount,
               signature: tx.signature,
               tx: `https://solscan.io/tx/${tx.signature}`,
               timestamp: tx.timestamp * 1000 || Date.now()
