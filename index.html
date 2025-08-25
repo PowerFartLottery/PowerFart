@@ -40,7 +40,6 @@
       padding: 1rem 2rem;
       transition: background-color 0.3s;
       width: 100%;
-      text-align: center;   /* ✅ Center main title box */
     }
     #fartButton:hover { background-color: #3b3b3b; }
     #fartButton:focus { outline: 2px solid #ff5cc9; }
@@ -276,7 +275,7 @@
       fartCloud.addEventListener('animationend', () => fartCloud.remove());
     });
 
-    // Copy Contract Address + fart noise ✅
+    // Copy Contract Address
     const caPre = document.getElementById('contractAddress');
     caPre.addEventListener('click', () => {
       const address = caPre.innerText.trim().split('\n').pop().trim();
@@ -337,33 +336,34 @@
     }
     fetchFartcoinBalance();
 
-    // Winners
-    document.addEventListener('DOMContentLoaded', function() {
-      fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
-        .then(res => { 
-          if (!res.ok) throw new Error('Failed to fetch winners. Status: '+res.status); 
-          return res.json(); 
-        })
-        .then(data => {
-          const list = document.getElementById('winners');
-          list.innerHTML = '';
-          if (data.length === 0) {
-            list.innerHTML = '<li>No winners yet</li>';
-          } else {
-            data.forEach(w => {
-              const li = document.createElement('li');
-              li.innerHTML = `
-                <a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> 
-                <a href="${w.tx}" target="_blank">🔗</a>
-              `;
-              list.appendChild(li);
-            });
-          }
-        })
-        .catch(err => {
-          document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
+// Winners
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
+    .then(res => { 
+      if (!res.ok) throw new Error('Failed to fetch winners. Status: '+res.status); 
+      return res.json(); 
+    })
+    .then(data => {
+      const list = document.getElementById('winners');
+      list.innerHTML = '';
+      if (data.length === 0) {
+        list.innerHTML = '<li>No winners yet</li>';
+      } else {
+        data.forEach(w => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <a href="https://solscan.io/account/${w.address}" target="_blank">${w.address}</a> 
+            <a href="${w.tx}" target="_blank">🔗</a>
+          `;
+          list.appendChild(li);
         });
+      }
+    })
+    .catch(err => {
+      document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
     });
+});
+
   </script>
 </body>
 </html>
