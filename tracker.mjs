@@ -12,7 +12,9 @@ const DECIMALS = 6;
 const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 
-// fetch existing winners from file
+// Use the raw transactions endpoint
+const HELIUS_URL = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=20`;
+
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
     const data = readFileSync(WINNERS_PATH, 'utf-8');
@@ -21,70 +23,47 @@ async function fetchExistingWinners() {
   return [];
 }
 
-// fetch paginated txs
-async function fetchAllTransactions(before = null) {
-  let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
-  if (before) url += `&before=${before}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Helius error: ${res.status}`);
-  return res.json();
-}
-
 async function main() {
   try {
+    const res = await fetch(HELIUS_URL);
+    const data = await res.json();
+
+    const transactions = data || [];
+    console.log(`📦 Fetched ${transactions.length} transactions from Helius`);
+
     const existing = await fetchExistingWinners();
     const knownSignatures = new Set(existing.map(w => w.signature));
-    let updatedWinners = [...existing];
+    const updatedWinners = [...existing];
 
-    let before = null;
-    let fetched = 0;
-    let keepGoing = true;
+    for (const tx of transactions) {
+      if (knownSignatures.has(tx.signature)) continue;
 
-    while (keepGoing) {
-      const transactions = await fetchAllTransactions(before);
-      if (!transactions.length) break;
+      const tokenTransfers = tx.tokenTransfers || [];
+      for (const transfer of tokenTransfers) {
+        const isFart = transfer.mint === FARTCOIN_MINT;
+        const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET; // ✅ Fix: outgoing transfers
+        const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
+        const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-      console.log(`📦 Fetched ${transactions.length} txs`);
-      fetched += transactions.length;
-
-      for (const tx of transactions) {
-        before = tx.signature; // paginate
-
-        if (knownSignatures.has(tx.signature)) continue;
-
-        const tokenTransfers = tx.tokenTransfers || [];
-        for (const transfer of tokenTransfers) {
-          const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
-          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
-
-          if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
-            updatedWinners.unshift({
-              address: transfer.toUserAccount,
-              amount: parseFloat(amount.toFixed(2)),
-              signature: tx.signature,
-              tx: `https://solscan.io/tx/${tx.signature}`,
-              timestamp: tx.timestamp * 1000 || Date.now()
-            });
-          }
+        if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
+          console.log(`🎯 New winner: ${transfer.toUserAccount} (${amount} FART)`);
+          updatedWinners.unshift({
+            address: transfer.toUserAccount,
+            amount: parseFloat(amount.toFixed(2)),
+            signature: tx.signature,
+            tx: `https://solscan.io/tx/${tx.signature}`,
+            timestamp: Date.now()
+          });
         }
-      }
-
-      // stop paginating if we hit only known signatures
-      if (transactions.every(tx => knownSignatures.has(tx.signature))) {
-        keepGoing = false;
       }
     }
 
-    // Always save, even if no new winners were found
-    updatedWinners = updatedWinners
-      .sort((a, b) => b.timestamp - a.timestamp) // newest first
-      .slice(0, 500); // keep file size manageable
-
-    writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners, null, 2));
-    console.log(`✅ Saved ${updatedWinners.length} winners (fetched ${fetched} txs).`);
+    if (updatedWinners.length !== existing.length) {
+      writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 100), null, 2));
+      console.log(`✅ Saved ${updatedWinners.length} total winners.`);
+    } else {
+      console.log('⏸ No new winners to add.');
+    }
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
