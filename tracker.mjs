@@ -1,5 +1,5 @@
 // tracker.mjs
-// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
+// Fully paginated Fartcoin Winner Tracker (ESM for GitHub Actions)
 
 import fetch from 'node-fetch';
 import { writeFileSync } from 'fs';
@@ -9,11 +9,11 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
-const MIN_AMOUNT = 10;
+const MIN_AMOUNT = 10;        // minimum FART to register
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
 
-// Fetch transactions from Helius with optional pagination
+// Fetch transactions with optional pagination
 async function fetchTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
   if (before) url += `&before=${before}`;
@@ -42,7 +42,7 @@ async function main() {
 
         let winnerDetected = false;
 
-        // First try tokenTransfers
+        // Try tokenTransfers first
         const transfers = tx.tokenTransfers || [];
         for (const t of transfers) {
           const isFart = t.mint === FARTCOIN_MINT;
@@ -69,7 +69,6 @@ async function main() {
           const sentAmount = (distroPre?.uiTokenAmount?.uiAmount || 0) - (distroPost?.uiTokenAmount?.uiAmount || 0);
 
           if (sentAmount >= MIN_AMOUNT) {
-            // Find recipient(s)
             const recipientPost = tx.postTokenBalances.find(
               b => b.mint === FARTCOIN_MINT && b.owner !== DISTRIBUTION_WALLET
             );
@@ -88,7 +87,7 @@ async function main() {
 
       // Prepare for next page
       before = transactions[transactions.length - 1].signature;
-      if (transactions.length < 100) keepGoing = false; // last page
+      if (transactions.length < 100) keepGoing = false; // reached the last page
     }
 
     // Keep newest MAX_WINNERS
