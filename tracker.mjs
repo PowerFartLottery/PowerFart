@@ -1,5 +1,5 @@
 // tracker.mjs
-// Robust Fartcoin Winner Tracker (ESM for GitHub Actions)
+// Simple Fartcoin Winner Tracker (ESM for GitHub Actions)
 
 import fetch from 'node-fetch';
 import { writeFileSync } from 'fs';
@@ -8,7 +8,7 @@ import { writeFileSync } from 'fs';
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
-const MIN_AMOUNT = 10;       // minimum FART to register
+const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
 
@@ -26,52 +26,31 @@ async function main() {
     let winners = [];
     let before = null;
     let keepGoing = true;
-    let fetched = 0;
 
     while (keepGoing) {
       const transactions = await fetchTransactions(before);
       if (!transactions.length) break;
 
-      console.log(`📦 Fetched ${transactions.length} transactions`);
-      fetched += transactions.length;
+      console.log(`📦 Fetched ${transactions.length} txs`);
       before = transactions[transactions.length - 1].signature;
 
       for (const tx of transactions) {
-        const preBalances = tx.preTokenBalances || [];
-        const postBalances = tx.postTokenBalances || [];
+        const transfers = tx.tokenTransfers || [];
+        for (const t of transfers) {
+          const isFart = t.mint === FARTCOIN_MINT;
+          const isOutgoing = t.fromUserAccount === DISTRIBUTION_WALLET;
+          const recipient = t.toUserAccount;
+          const amount = Number(t.tokenAmount?.amount || 0) / Math.pow(10, 6);
 
-        // Find all FART accounts of the distribution wallet
-        const distroPreAccounts = preBalances.filter(
-          b => b.mint === FARTCOIN_MINT && b.owner === DISTRIBUTION_WALLET
-        );
-
-        for (const preAcct of distroPreAccounts) {
-          // Find matching post balance for same account
-          const postAcct = postBalances.find(
-            b => b.mint === FARTCOIN_MINT && b.accountIndex === preAcct.accountIndex
-          );
-          if (!postAcct) continue;
-
-          const preAmount = preAcct.uiTokenAmount?.uiAmount || 0;
-          const postAmount = postAcct.uiTokenAmount?.uiAmount || 0;
-          const sentAmount = preAmount - postAmount;
-
-          if (sentAmount < MIN_AMOUNT) continue;
-
-          // Find recipient: any postTokenBalance that increased
-          const recipientAcct = postBalances.find(
-            b => b.mint === FARTCOIN_MINT && b.owner !== DISTRIBUTION_WALLET && b.uiTokenAmount?.uiAmount > 0
-          );
-          if (!recipientAcct) continue;
-
-          winners.unshift({
-            address: recipientAcct.owner,
-            signature: tx.signature,
-            tx: `https://solscan.io/tx/${tx.signature}`,
-            timestamp: (tx.timestamp || Date.now() / 1000) * 1000
-          });
-
-          console.log(`🎯 Winner detected: ${recipientAcct.owner} (>= ${MIN_AMOUNT} FART)`);
+          if (isFart && isOutgoing && recipient && recipient !== DISTRIBUTION_WALLET && amount >= MIN_AMOUNT) {
+            winners.unshift({
+              address: recipient,
+              signature: tx.signature,
+              tx: `https://solscan.io/tx/${tx.signature}`,
+              timestamp: (tx.timestamp || Date.now() / 1000) * 1000
+            });
+            console.log(`🎯 Winner: ${recipient} (tx: ${tx.signature})`);
+          }
         }
       }
 
@@ -83,7 +62,7 @@ async function main() {
 
     // Always overwrite winners.json
     writeFileSync(WINNERS_PATH, JSON.stringify(winners, null, 2));
-    console.log(`✅ Winners file updated. Total winners saved: ${winners.length} (fetched ${fetched} txs).`);
+    console.log(`✅ Winners file updated. Total winners saved: ${winners.length}`);
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
