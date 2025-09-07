@@ -9,7 +9,7 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
-const MIN_AMOUNT = 10;
+const MIN_AMOUNT = 1;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
 
