@@ -9,21 +9,20 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
-const MIN_AMOUNT = 1;
+const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
 
-// Fetch existing winners
+// fetch existing winners
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
-    const data = readFileSync(WINNERS_PATH, 'utf-8');
-    return JSON.parse(data);
+    return JSON.parse(readFileSync(WINNERS_PATH, 'utf-8'));
   }
   return [];
 }
 
-// Fetch paginated transactions
-async function fetchTransactions(before = null) {
+// fetch paginated transactions
+async function fetchAllTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
   if (before) url += `&before=${before}`;
   const res = await fetch(url);
@@ -35,35 +34,44 @@ async function main() {
   try {
     const existing = await fetchExistingWinners();
     const knownSignatures = new Set(existing.map(w => w.signature));
-    const updatedWinners = [...existing];
+    let updatedWinners = [...existing];
 
     let before = null;
+    let fetched = 0;
     let keepGoing = true;
 
     while (keepGoing) {
-      const transactions = await fetchTransactions(before);
+      const transactions = await fetchAllTransactions(before);
       if (!transactions.length) break;
 
       console.log(`📦 Fetched ${transactions.length} transactions`);
-      before = transactions[transactions.length - 1].signature;
+      fetched += transactions.length;
 
       let newWinnerFound = false;
 
       for (const tx of transactions) {
+        before = tx.signature; // for pagination
+
         if (knownSignatures.has(tx.signature)) continue;
 
         const tokenTransfers = tx.tokenTransfers || [];
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
+          const isOutgoing =
+            transfer.fromUserAccount === DISTRIBUTION_WALLET ||
+            transfer.from === DISTRIBUTION_WALLET; // fallback to 'from'
+          const toOtherWallet =
+            transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET ||
+            transfer.to && transfer.to !== DISTRIBUTION_WALLET; // fallback to 'to'
           const amount = Number(transfer.tokenAmount?.amount || 0) / Math.pow(10, DECIMALS);
 
           if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-            console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
+            const winnerAddress = transfer.toUserAccount || transfer.to;
+
+            console.log(`🎯 Winner: ${winnerAddress} (${amount} FART)`);
 
             updatedWinners.unshift({
-              address: transfer.toUserAccount,
+              address: winnerAddress,
               amount: parseFloat(amount.toFixed(2)),
               signature: tx.signature,
               tx: `https://solscan.io/tx/${tx.signature}`,
@@ -76,13 +84,16 @@ async function main() {
         }
       }
 
-      // Stop if no new winners in this batch
       if (!newWinnerFound) keepGoing = false;
     }
 
-    // ✅ Save winners.json (truncate to MAX_WINNERS)
-    writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, MAX_WINNERS), null, 2));
-    console.log(`✅ Winners file updated. Total winners saved: ${Math.min(updatedWinners.length, MAX_WINNERS)}`);
+    // Sort newest first, limit file size
+    updatedWinners = updatedWinners
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, MAX_WINNERS);
+
+    writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners, null, 2));
+    console.log(`✅ Saved ${updatedWinners.length} winners (fetched ${fetched} txs).`);
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
