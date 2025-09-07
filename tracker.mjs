@@ -9,8 +9,9 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
-const MIN_AMOUNT = 10;
+const MIN_AMOUNT = 10;       // minimum FART to register
 const WINNERS_PATH = './winners.json';
+const MAX_WINNERS = 500;
 
 // fetch existing winners from file
 async function fetchExistingWinners() {
@@ -21,7 +22,7 @@ async function fetchExistingWinners() {
   return [];
 }
 
-// fetch paginated txs
+// fetch paginated transactions from Helius
 async function fetchAllTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
   if (before) url += `&before=${before}`;
@@ -46,10 +47,9 @@ async function main() {
 
       console.log(`📦 Fetched ${transactions.length} txs`);
       fetched += transactions.length;
+      before = transactions[transactions.length - 1].signature;
 
       for (const tx of transactions) {
-        before = tx.signature; // paginate
-
         if (knownSignatures.has(tx.signature)) continue;
 
         const tokenTransfers = tx.tokenTransfers || [];
@@ -57,7 +57,7 @@ async function main() {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
-          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
+          const amount = Number(transfer.tokenAmount?.amount || 0) / Math.pow(10, DECIMALS);
 
           if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
             console.log(`🎯 Winner: ${transfer.toUserAccount} (${amount} FART)`);
@@ -71,20 +71,11 @@ async function main() {
           }
         }
       }
-
-      // stop paginating if no new winners found in this batch
-      if (transactions.every(tx => knownSignatures.has(tx.signature))) {
-        keepGoing = false;
-      }
     }
 
-    // save only last 500 winners to keep file small
-    if (updatedWinners.length !== existing.length) {
-      writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, 500), null, 2));
-      console.log(`✅ Saved ${updatedWinners.length} total winners (fetched ${fetched} txs).`);
-    } else {
-      console.log('⏸ No new winners to add.');
-    }
+    // ✅ Always save winners.json (truncate to MAX_WINNERS)
+    writeFileSync(WINNERS_PATH, JSON.stringify(updatedWinners.slice(0, MAX_WINNERS), null, 2));
+    console.log(`✅ Winners file updated. Total winners saved: ${updatedWinners.length} (fetched ${fetched} txs).`);
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
