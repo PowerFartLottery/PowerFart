@@ -8,11 +8,8 @@ import { writeFileSync } from 'fs';
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
-const DECIMALS = 6;
-const MIN_AMOUNT = 1;
 const WINNERS_PATH = './winners.json';
 const MAX_WINNERS = 500;
-const FETCH_ALL_HISTORY = true; // set true to ignore MIN_AMOUNT if desired
 
 // fetch paginated transactions
 async function fetchAllTransactions(before = null) {
@@ -41,57 +38,35 @@ async function main() {
 
       for (const tx of transactions) {
         before = tx.signature; // for pagination
+
         const tokenTransfers = tx.tokenTransfers || [];
-
         for (const transfer of tokenTransfers) {
-          const isFart = transfer.mint === FARTCOIN_MINT;
+          // Only track Fartcoin transfers
+          if (transfer.mint !== FARTCOIN_MINT) continue;
 
-          // === Safe FART amount calculation ===
-          let amount = 0;
-          if (transfer.tokenAmount?.amount) {
-            amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
-          } else if (tx.postTokenBalances) {
-            const balanceChange = tx.postTokenBalances.find(
-              b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount
-            );
-            if (balanceChange?.uiTokenAmount?.uiAmount) {
-              amount = balanceChange.uiTokenAmount.uiAmount;
-            }
-          } else if (tx.preTokenBalances && tx.postTokenBalances) {
-            const pre = tx.preTokenBalances.find(b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount);
-            const post = tx.postTokenBalances.find(b => b.mint === FARTCOIN_MINT && b.owner === transfer.toUserAccount);
-            const preAmount = pre?.uiTokenAmount?.uiAmount || 0;
-            const postAmount = post?.uiTokenAmount?.uiAmount || 0;
-            amount = postAmount - preAmount;
-          }
+          // Record any outgoing transfer from the distribution wallet
+          const from = transfer.fromUserAccount || transfer.from;
+          const to = transfer.toUserAccount || transfer.to;
 
-          amount = parseFloat(amount.toFixed(2));
+          if (!from || !to || from !== DISTRIBUTION_WALLET) continue;
 
-          const winnerAddress = transfer.toUserAccount || transfer.to;
-          if (!winnerAddress) continue;
+          console.log(`🎯 Winner detected: ${to}`);
 
-          console.log(`Checking transfer: to=${winnerAddress}, amount=${amount}`);
+          winners.unshift({
+            address: to,
+            signature: tx.signature,
+            tx: `https://solscan.io/tx/${tx.signature}`,
+            timestamp: (tx.timestamp || Date.now() / 1000) * 1000
+          });
 
-          if (isFart && (amount >= MIN_AMOUNT || FETCH_ALL_HISTORY)) {
-            console.log(`🎯 Winner detected: ${winnerAddress} (${amount} FART)`);
-
-            winners.unshift({
-              address: winnerAddress,
-              amount,
-              signature: tx.signature,
-              tx: `https://solscan.io/tx/${tx.signature}`,
-              timestamp: (tx.timestamp || Date.now() / 1000) * 1000
-            });
-
-            newWinnerFound = true;
-          }
+          newWinnerFound = true;
         }
       }
 
       if (!newWinnerFound) keepGoing = false;
     }
 
-    // Sort newest first, limit to MAX_WINNERS
+    // Sort newest first and truncate
     winners = winners.sort((a, b) => b.timestamp - a.timestamp).slice(0, MAX_WINNERS);
 
     // Overwrite winners.json every run
