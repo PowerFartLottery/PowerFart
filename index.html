@@ -342,7 +342,7 @@
 document.addEventListener('DOMContentLoaded', function() {
   fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
     .then(res => { 
-      if (!res.ok) throw new Error('Failed to fetch winners. Status: '+res.status); 
+      if (!res.ok) throw new Error('Failed to fetch winners. Status: ' + res.status); 
       return res.json(); 
     })
     .then(data => {
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
         data.forEach(w => {
           const li = document.createElement('li');
           li.innerHTML = `
-            <a href="${w.tx}" target="_blank">${w.amount} FART → TX</a>
+            <a href="${w.tx}" target="_blank">${w.address} → ${w.amount} FART</a>
           `;
           list.appendChild(li);
         });
@@ -364,7 +364,6 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
     });
 });
-
 
   </script>
 </body>
