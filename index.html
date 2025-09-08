@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
         data.forEach(w => {
           const li = document.createElement('li');
           li.innerHTML = `
-            <a href="${w.tx}" target="_blank">${w.address} → ${w.amount} FART</a>
+            <a href="${w.tx}" target="_blank">${w.address} 🔗</a>
           `;
           list.appendChild(li);
         });
@@ -364,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
     });
 });
+
 
   </script>
 </body>
