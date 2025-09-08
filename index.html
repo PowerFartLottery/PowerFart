@@ -373,20 +373,20 @@ document.addEventListener('DOMContentLoaded', async function() {
       const txData = await txRes.json();
       let amount = 0;
 
-      // Find the token transfer instruction for FART
-      if (txData.result && txData.result.transaction.message.instructions) {
-        const instrs = txData.result.transaction.message.instructions;
-        for (const instr of instrs) {
-          if (
-            instr.parsed?.type === 'transfer' &&
-            instr.parsed?.info?.mint === FARTCOIN_TOKEN &&
-            instr.parsed?.info?.destination === w.address
-          ) {
-            amount = Number(instr.parsed.info.amount) / Math.pow(10, FARTCOIN_DECIMALS);
-            break;
-          }
-        }
+if (txData.result?.meta?.innerInstructions) {
+  for (const inner of txData.result.meta.innerInstructions) {
+    for (const instr of inner.instructions) {
+      if (
+        instr.parsed?.type === 'transfer' &&
+        instr.parsed?.info?.mint === FARTCOIN_TOKEN &&
+        instr.parsed?.info?.destination === w.address
+      ) {
+        amount += Number(instr.parsed.info.amount) / Math.pow(10, FARTCOIN_DECIMALS);
       }
+    }
+  }
+}
+
 
       li.innerHTML = `<a href="${w.tx}" target="_blank">${w.address} → ${amount.toLocaleString()} FART 🔗</a>`;
       list.appendChild(li);
