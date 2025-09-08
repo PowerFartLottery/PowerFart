@@ -339,64 +339,30 @@
     fetchFartcoinBalance();
 
 // Winners
-const FARTCOIN_TOKEN = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump";
-const FARTCOIN_DECIMALS = 6;
-
-document.addEventListener('DOMContentLoaded', async function() {
-  const list = document.getElementById('winners');
-  list.innerHTML = 'Loading...';
-
-  try {
-    const res = await fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json');
-    if (!res.ok) throw new Error('Failed to fetch winners. Status: ' + res.status);
-    const data = await res.json();
-
-    list.innerHTML = '';
-    if (data.length === 0) {
-      list.innerHTML = '<li>No winners yet</li>';
-      return;
-    }
-
-    for (const w of data) {
-      let amount = 0;
-
-      try {
-        const txRes = await fetch(`https://api.mainnet-beta.solana.com`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'getTransaction',
-            params: [w.tx, { encoding: 'json', commitment: 'confirmed' }]
-          })
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('https://raw.githubusercontent.com/PowerFartLottery/PowerFart/main/winners.json')
+    .then(res => { 
+      if (!res.ok) throw new Error('Failed to fetch winners. Status: ' + res.status); 
+      return res.json(); 
+    })
+    .then(data => {
+      const list = document.getElementById('winners');
+      list.innerHTML = '';
+      if (data.length === 0) {
+        list.innerHTML = '<li>No winners yet</li>';
+      } else {
+        data.forEach(w => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <a href="${w.tx}" target="_blank">${w.address} 🔗</a>
+          `;
+          list.appendChild(li);
         });
-        const txData = await txRes.json();
-
-        if (txData.result?.meta?.innerInstructions) {
-          for (const inner of txData.result.meta.innerInstructions) {
-            for (const instr of inner.instructions) {
-              if (
-                instr.parsed?.type === 'transfer' &&
-                instr.parsed?.info?.mint === FARTCOIN_TOKEN &&
-                instr.parsed?.info?.destination === w.address
-              ) {
-                amount += Number(instr.parsed.info.amount) / Math.pow(10, FARTCOIN_DECIMALS);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error(`Failed to fetch tx ${w.tx}:`, err);
       }
-
-      const li = document.createElement('li');
-      li.innerHTML = `<a href="${w.tx}" target="_blank">${w.address} → ${amount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} FART 🔗</a>`;
-      list.appendChild(li);
-    }
-  } catch (err) {
-    list.innerHTML = `<li>Error loading winners: ${err.message}</li>`;
-  }
+    })
+    .catch(err => {
+      document.getElementById('winners').innerHTML = `<li>Error loading winners: ${err.message}</li>`;
+    });
 });
 
 
