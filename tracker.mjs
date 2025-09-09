@@ -14,13 +14,12 @@ const WINNERS_PATH = './winners.json';
 const BATCH_LIMIT = 100;     // Helius max per request
 const MAX_WINNERS = 500;     // keep file small
 
-// --- Helpers ---
+// ✅ Only change #1: correct "first two minutes" window check (UTC)
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
   const d = new Date(ts * 1000);
   const minutes = d.getUTCMinutes();
-  const seconds = d.getUTCSeconds();
-  return minutes === 0 && seconds <= 120;
+  return minutes < 2; // minutes 0 or 1
 }
 
 // Fetch existing winners from file
@@ -66,9 +65,10 @@ async function main() {
         const tokenTransfers = tx.tokenTransfers || [];
         if (!tokenTransfers.length) continue;
 
-        // ✅ New time filter
+        // ✅ Only change #2: better skip log with UTC time
         if (!isWithinFirst2Minutes(tx.timestamp)) {
-          console.log(`⏩ Skipping tx outside prize window: ${tx.signature}`);
+          const when = tx.timestamp ? new Date(tx.timestamp * 1000).toISOString() : 'n/a';
+          console.log(`⏩ Skipping tx outside prize window (UTC ${when}): ${tx.signature}`);
           continue;
         }
 
