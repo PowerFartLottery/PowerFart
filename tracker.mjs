@@ -25,6 +25,7 @@ const IGNORED_ADDRESSES = new Set([
   'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 ]);
 
+
 // Check if tx timestamp is in the first 2 minutes of the hour
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
