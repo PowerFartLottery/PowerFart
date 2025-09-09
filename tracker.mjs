@@ -14,12 +14,14 @@ const WINNERS_PATH = './winners.json';
 const BATCH_LIMIT = 100;
 const MAX_WINNERS = 500;
 
+// Check if tx timestamp is in the first 2 minutes of the hour
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
   const d = new Date(ts * 1000);
   return d.getUTCMinutes() < 2;
 }
 
+// Load existing winners
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
     const data = readFileSync(WINNERS_PATH, 'utf-8');
@@ -28,6 +30,7 @@ async function fetchExistingWinners() {
   return [];
 }
 
+// Fetch a batch of transactions from Helius
 async function fetchTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=${BATCH_LIMIT}`;
   if (before) url += `&before=${before}`;
@@ -39,7 +42,7 @@ async function fetchTransactions(before = null) {
 async function main() {
   try {
     const existing = await fetchExistingWinners();
-    const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`)); // 👈 dedupe by sig+address
+    const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`));
     const updatedWinners = [...existing];
 
     let before = null;
@@ -70,29 +73,29 @@ async function main() {
 
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const toOtherWallet = transfer.toUserAccount && transfer.toUserAccount !== DISTRIBUTION_WALLET;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-            const key = `${tx.signature}_${transfer.toUserAccount}`;
-            if (!knownTransfers.has(key)) {
-              console.log(`➡ Outgoing FART detected: ${transfer.toUserAccount} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
+          // Get recipient: either mapped wallet or fallback
+          const recipient = transfer.toUserAccount || transfer.to;
+          if (!recipient || amount < MIN_AMOUNT || !isFart) continue;
 
-              updatedWinners.unshift({
-                address: transfer.toUserAccount,
-                amount: parseFloat(amount.toFixed(2)),
-                signature: tx.signature,
-                tx: `https://solscan.io/tx/${tx.signature}`,
-                timestamp: ((tx.timestamp || Math.floor(Date.now() / 1000)) * 1000)
-              });
+          const key = `${tx.signature}_${recipient}`;
+          if (!knownTransfers.has(key)) {
+            console.log(`➡ Outgoing FART detected: ${recipient} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
 
-              knownTransfers.add(key);
-              newAdded++;
-              txHadNew = true;
-            } else {
-              console.log(`⏭️ Already had transfer for ${transfer.toUserAccount} in tx: ${tx.signature}`);
-            }
+            updatedWinners.unshift({
+              address: recipient,
+              amount: parseFloat(amount.toFixed(2)),
+              signature: tx.signature,
+              tx: `https://solscan.io/tx/${tx.signature}`,
+              timestamp: ((tx.timestamp || Math.floor(Date.now() / 1000)) * 1000)
+            });
+
+            knownTransfers.add(key);
+            newAdded++;
+            txHadNew = true;
+          } else {
+            console.log(`⏭️ Already had transfer for ${recipient} in tx: ${tx.signature}`);
           }
         }
 
