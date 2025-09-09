@@ -14,6 +14,18 @@ const WINNERS_PATH = './winners.json';
 const BATCH_LIMIT = 100;
 const MAX_WINNERS = 500;
 
+// Addresses to ignore (swap/program accounts)
+const IGNORED_ADDRESSES = new Set([
+  DISTRIBUTION_WALLET,
+  // Add known aggregator or program addresses here
+  'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
+  '6LXutJvKUw8Q5ue2gCgKHQdAN4suWW8awzFVC6XCguFx',
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
+  'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
+  'TessVdML9pBGgG9yGks7o4HewRaXVAMuoVj4x83GLQH'
+  'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
+]);
+
 // Check if tx timestamp is in the first 2 minutes of the hour
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
@@ -77,14 +89,12 @@ async function main() {
           const recipient = transfer.toUserAccount || transfer.to;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // Only include real token transfers (exclude swaps)
-          const isTransfer = transfer.type === 'transfer' || transfer.instructionType === 'transfer';
-
-          if (!isFart || !isOutgoing || !recipient || recipient === DISTRIBUTION_WALLET || !isTransfer || amount < MIN_AMOUNT) continue;
+          // Skip swaps/program transfers
+          if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
           if (!knownTransfers.has(key)) {
-            console.log(`➡ Outgoing FART detected: ${recipient} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
+            console.log(`➡ Winner detected: ${recipient} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
 
             updatedWinners.unshift({
               address: recipient,
@@ -110,12 +120,12 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // CLEANUP: Remove distro wallet & deduplicate by address, keeping newest
+    // CLEANUP: deduplicate by address, keeping newest
     const cleanedWinners = [];
     const seenAddresses = new Set();
 
     for (const w of updatedWinners) {
-      if (w.address === DISTRIBUTION_WALLET) continue; // skip distro wallet
+      if (IGNORED_ADDRESSES.has(w.address)) continue; // skip distro/program wallets
       if (!seenAddresses.has(w.address)) {
         cleanedWinners.push(w);
         seenAddresses.add(w.address);
