@@ -9,20 +9,17 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
 const DECIMALS = 6;
-const MIN_AMOUNT = 10;       // minimum FART to register
+const MIN_AMOUNT = 10;
 const WINNERS_PATH = './winners.json';
-const BATCH_LIMIT = 100;     // Helius max per request
-const MAX_WINNERS = 500;     // keep file small
+const BATCH_LIMIT = 100;
+const MAX_WINNERS = 500;
 
-// ✅ Only change #1: correct "first two minutes" window check (UTC)
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
   const d = new Date(ts * 1000);
-  const minutes = d.getUTCMinutes();
-  return minutes < 2; // minutes 0 or 1
+  return d.getUTCMinutes() < 2;
 }
 
-// Fetch existing winners from file
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
     const data = readFileSync(WINNERS_PATH, 'utf-8');
@@ -31,7 +28,6 @@ async function fetchExistingWinners() {
   return [];
 }
 
-// Fetch a batch of transactions from Helius
 async function fetchTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=${BATCH_LIMIT}`;
   if (before) url += `&before=${before}`;
@@ -43,7 +39,7 @@ async function fetchTransactions(before = null) {
 async function main() {
   try {
     const existing = await fetchExistingWinners();
-    const knownSignatures = new Set(existing.map(w => w.signature));
+    const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`)); // 👈 dedupe by sig+address
     const updatedWinners = [...existing];
 
     let before = null;
@@ -58,19 +54,17 @@ async function main() {
       console.log(`📦 Fetched ${transactions.length} transactions`);
       totalFetched += transactions.length;
 
-      // Update cursor for next batch
       before = transactions[transactions.length - 1].signature;
 
       for (const tx of transactions) {
-        const tokenTransfers = tx.tokenTransfers || [];
-        if (!tokenTransfers.length) continue;
-
-        // ✅ Only change #2: better skip log with UTC time
         if (!isWithinFirst2Minutes(tx.timestamp)) {
           const when = tx.timestamp ? new Date(tx.timestamp * 1000).toISOString() : 'n/a';
           console.log(`⏩ Skipping tx outside prize window (UTC ${when}): ${tx.signature}`);
           continue;
         }
+
+        const tokenTransfers = tx.tokenTransfers || [];
+        if (!tokenTransfers.length) continue;
 
         let txHadNew = false;
 
@@ -81,7 +75,8 @@ async function main() {
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
           if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-            if (!knownSignatures.has(tx.signature)) {
+            const key = `${tx.signature}_${transfer.toUserAccount}`;
+            if (!knownTransfers.has(key)) {
               console.log(`➡ Outgoing FART detected: ${transfer.toUserAccount} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
 
               updatedWinners.unshift({
@@ -92,11 +87,11 @@ async function main() {
                 timestamp: ((tx.timestamp || Math.floor(Date.now() / 1000)) * 1000)
               });
 
-              knownSignatures.add(tx.signature);
+              knownTransfers.add(key);
               newAdded++;
               txHadNew = true;
             } else {
-              console.log(`⏭️ Already had tx: ${tx.signature}`);
+              console.log(`⏭️ Already had transfer for ${transfer.toUserAccount} in tx: ${tx.signature}`);
             }
           }
         }
@@ -106,16 +101,14 @@ async function main() {
         }
       }
 
-      // Stop if we got less than a full batch
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // Deduplicate by signature
+    // Deduplicate just in case
     const uniqueWinners = Array.from(
-      new Map(updatedWinners.map(w => [w.signature, w])).values()
+      new Map(updatedWinners.map(w => [`${w.signature}_${w.address}`, w])).values()
     );
 
-    // Keep newest MAX_WINNERS
     writeFileSync(WINNERS_PATH, JSON.stringify(uniqueWinners.slice(0, MAX_WINNERS), null, 2));
 
     console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${uniqueWinners.length} (fetched ${totalFetched} txs).`);
