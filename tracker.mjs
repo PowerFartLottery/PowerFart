@@ -14,6 +14,15 @@ const WINNERS_PATH = './winners.json';
 const BATCH_LIMIT = 100;     // Helius max per request
 const MAX_WINNERS = 500;     // keep file small
 
+// --- Helpers ---
+function isWithinFirst2Minutes(ts) {
+  if (!ts) return false;
+  const d = new Date(ts * 1000);
+  const minutes = d.getUTCMinutes();
+  const seconds = d.getUTCSeconds();
+  return minutes === 0 && seconds <= 120;
+}
+
 // Fetch existing winners from file
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
@@ -56,6 +65,12 @@ async function main() {
       for (const tx of transactions) {
         const tokenTransfers = tx.tokenTransfers || [];
         if (!tokenTransfers.length) continue;
+
+        // ✅ New time filter
+        if (!isWithinFirst2Minutes(tx.timestamp)) {
+          console.log(`⏩ Skipping tx outside prize window: ${tx.signature}`);
+          continue;
+        }
 
         let txHadNew = false;
 
