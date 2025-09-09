@@ -77,7 +77,7 @@ async function main() {
           const recipient = transfer.toUserAccount || transfer.to;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // ⚠️ Ignore transfers to the distribution wallet itself
+          // ⚠️ Ignore invalid transfers
           if (!isFart || !isOutgoing || !recipient || recipient === DISTRIBUTION_WALLET || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
@@ -108,14 +108,21 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // Deduplicate just in case
-    const uniqueWinners = Array.from(
-      new Map(updatedWinners.map(w => [`${w.signature}_${w.address}`, w])).values()
-    );
+    // CLEANUP: Remove distro wallet & deduplicate by address, keeping newest
+    const cleanedWinners = [];
+    const seenAddresses = new Set();
 
-    writeFileSync(WINNERS_PATH, JSON.stringify(uniqueWinners.slice(0, MAX_WINNERS), null, 2));
+    for (const w of updatedWinners) {
+      if (w.address === DISTRIBUTION_WALLET) continue; // skip distro wallet
+      if (!seenAddresses.has(w.address)) {
+        cleanedWinners.push(w);
+        seenAddresses.add(w.address);
+      }
+    }
 
-    console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${uniqueWinners.length} (fetched ${totalFetched} txs).`);
+    writeFileSync(WINNERS_PATH, JSON.stringify(cleanedWinners.slice(0, MAX_WINNERS), null, 2));
+
+    console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${cleanedWinners.length} (fetched ${totalFetched} txs).`);
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
