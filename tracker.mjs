@@ -25,7 +25,6 @@ const IGNORED_ADDRESSES = new Set([
   'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 ]);
 
-
 // Check if tx timestamp is in the first 2 minutes of the hour
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
@@ -55,7 +54,7 @@ async function main() {
   try {
     const existing = await fetchExistingWinners();
     const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`));
-    const updatedWinners = [...existing];
+    const updatedWinners = [];
 
     let before = null;
     let keepGoing = true;
@@ -81,16 +80,14 @@ async function main() {
         const tokenTransfers = tx.tokenTransfers || [];
         if (!tokenTransfers.length) continue;
 
-        let txHadNew = false;
-
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const recipient = transfer.toUserAccount;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // ✅ Skip swaps/program transfers: must be direct user transfer
-          if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || amount < MIN_AMOUNT) continue;
+          // ✅ Skip invalid transfers
+          if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || !amount || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
           if (!knownTransfers.has(key)) {
@@ -106,26 +103,20 @@ async function main() {
 
             knownTransfers.add(key);
             newAdded++;
-            txHadNew = true;
-          } else {
-            console.log(`⏭️ Already had transfer for ${recipient} in tx: ${tx.signature}`);
           }
-        }
-
-        if (!txHadNew && tokenTransfers.length > 0) {
-          console.log(`ℹ️ No qualifying FART transfer in tx: ${tx.signature}`);
         }
       }
 
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // CLEANUP: deduplicate by address, keeping newest
+    // CLEANUP: deduplicate by address, remove swaps/invalid transfers, keep newest
     const cleanedWinners = [];
     const seenAddresses = new Set();
 
-    for (const w of updatedWinners) {
+    for (const w of [...updatedWinners, ...existing]) {
       if (IGNORED_ADDRESSES.has(w.address)) continue; // skip distro/program wallets
+      if (!w.amount || w.amount < MIN_AMOUNT) continue; // skip swaps/invalid
       if (!seenAddresses.has(w.address)) {
         cleanedWinners.push(w);
         seenAddresses.add(w.address);
