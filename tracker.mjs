@@ -1,10 +1,7 @@
 // tracker.mjs
-// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
-
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
-// === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
@@ -14,7 +11,6 @@ const WINNERS_PATH = './winners.json';
 const BATCH_LIMIT = 100;
 const MAX_WINNERS = 500;
 
-// Addresses to ignore (swap/program accounts)
 const IGNORED_ADDRESSES = new Set([
   DISTRIBUTION_WALLET,
   'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
@@ -25,23 +21,19 @@ const IGNORED_ADDRESSES = new Set([
   'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 ]);
 
-// Check if tx timestamp is in the first 2 minutes of the hour
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
   const d = new Date(ts * 1000);
   return d.getUTCMinutes() < 2;
 }
 
-// Load existing winners
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
-    const data = readFileSync(WINNERS_PATH, 'utf-8');
-    return JSON.parse(data);
+    return JSON.parse(readFileSync(WINNERS_PATH, 'utf-8'));
   }
   return [];
 }
 
-// Fetch a batch of transactions from Helius
 async function fetchTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=${BATCH_LIMIT}`;
   if (before) url += `&before=${before}`;
@@ -71,11 +63,7 @@ async function main() {
       before = transactions[transactions.length - 1].signature;
 
       for (const tx of transactions) {
-        if (!isWithinFirst2Minutes(tx.timestamp)) {
-          const when = tx.timestamp ? new Date(tx.timestamp * 1000).toISOString() : 'n/a';
-          console.log(`⏩ Skipping tx outside prize window (UTC ${when}): ${tx.signature}`);
-          continue;
-        }
+        if (!isWithinFirst2Minutes(tx.timestamp)) continue;
 
         const tokenTransfers = tx.tokenTransfers || [];
         if (!tokenTransfers.length) continue;
@@ -84,9 +72,11 @@ async function main() {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const recipient = transfer.toUserAccount || transfer.to;
-          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // Skip swaps/program transfers or non-legit recipients
+          const amount = transfer.tokenAmount?.amount
+            ? Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS)
+            : 0;
+
           if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
@@ -110,7 +100,6 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // Aggregate winners by address, accumulate amounts and transfers
     const winnersMap = new Map();
 
     for (const w of updatedWinners) {
@@ -141,8 +130,9 @@ async function main() {
       }
     }
 
-    // Convert map to array & sort newest-first
+    // Remove winners with 0 amount
     const cleanedWinners = Array.from(winnersMap.values())
+      .filter(w => w.amount > 0)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, MAX_WINNERS);
 
