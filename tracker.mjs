@@ -54,7 +54,7 @@ async function main() {
   try {
     const existing = await fetchExistingWinners();
     const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`));
-    const updatedWinners = [];
+    const updatedWinners = [...existing];
 
     let before = null;
     let keepGoing = true;
@@ -83,11 +83,11 @@ async function main() {
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const recipient = transfer.toUserAccount;
+          const recipient = transfer.toUserAccount || transfer.to;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // ✅ Skip invalid transfers
-          if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || !amount || amount < MIN_AMOUNT) continue;
+          // Skip swaps/program transfers or non-legit recipients
+          if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
           if (!knownTransfers.has(key)) {
@@ -110,13 +110,12 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // CLEANUP: deduplicate by address, remove swaps/invalid transfers, keep newest
+    // CLEANUP: deduplicate by address, keeping newest
     const cleanedWinners = [];
     const seenAddresses = new Set();
 
-    for (const w of [...updatedWinners, ...existing]) {
+    for (const w of updatedWinners) {
       if (IGNORED_ADDRESSES.has(w.address)) continue; // skip distro/program wallets
-      if (!w.amount || w.amount < MIN_AMOUNT) continue; // skip swaps/invalid
       if (!seenAddresses.has(w.address)) {
         cleanedWinners.push(w);
         seenAddresses.add(w.address);
