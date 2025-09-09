@@ -17,12 +17,11 @@ const MAX_WINNERS = 500;
 // Addresses to ignore (swap/program accounts)
 const IGNORED_ADDRESSES = new Set([
   DISTRIBUTION_WALLET,
-  // Add known aggregator or program addresses here
   'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
   '6LXutJvKUw8Q5ue2gCgKHQdAN4suWW8awzFVC6XCguFx',
   'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
   'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
-  'TessVdML9pBGgG9yGks7o4HewRaXVAMuoVj4x83GLQH'
+  'TessVdML9pBGgG9yGks7o4HewRaXVAMuoVj4x83GLQH',
   'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 ]);
 
