@@ -73,11 +73,11 @@ async function main() {
 
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
+          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET; // 👈 only outgoing prize payouts
+          const recipient = transfer.toUserAccount || transfer.to;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // Get recipient: either mapped wallet or fallback
-          const recipient = transfer.toUserAccount || transfer.to;
-          if (!recipient || amount < MIN_AMOUNT || !isFart) continue;
+          if (!isFart || !isOutgoing || !recipient || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
           if (!knownTransfers.has(key)) {
