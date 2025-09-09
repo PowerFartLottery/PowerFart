@@ -110,9 +110,9 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // CLEANUP: deduplicate by address, keeping newest
-    const cleanedWinners = [];
+    // CLEANUP: deduplicate by address, keep newest, sort newest-first
     const seenAddresses = new Set();
+    const cleanedWinners = [];
 
     for (const w of updatedWinners) {
       if (IGNORED_ADDRESSES.has(w.address)) continue; // skip distro/program wallets
@@ -122,6 +122,10 @@ async function main() {
       }
     }
 
+    // Sort by timestamp descending (newest first)
+    cleanedWinners.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Write top MAX_WINNERS
     writeFileSync(WINNERS_PATH, JSON.stringify(cleanedWinners.slice(0, MAX_WINNERS), null, 2));
 
     console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${cleanedWinners.length} (fetched ${totalFetched} txs).`);
