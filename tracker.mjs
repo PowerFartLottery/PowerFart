@@ -85,10 +85,10 @@ async function main() {
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
-          const recipient = transfer.toUserAccount || transfer.to;
+          const recipient = transfer.toUserAccount;
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
-          // Skip swaps/program transfers
+          // ✅ Skip swaps/program transfers: must be direct user transfer
           if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
