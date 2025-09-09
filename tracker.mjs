@@ -53,7 +53,7 @@ async function fetchTransactions(before = null) {
 async function main() {
   try {
     const existing = await fetchExistingWinners();
-    const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`));
+    const knownTransfers = new Set(existing.flatMap(w => (w.transfers || []).map(t => `${t.signature}_${w.address}`)));
     const updatedWinners = [...existing];
 
     let before = null;
@@ -93,7 +93,7 @@ async function main() {
           if (!knownTransfers.has(key)) {
             console.log(`➡ Winner detected: ${recipient} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
 
-            updatedWinners.unshift({
+            updatedWinners.push({
               address: recipient,
               amount: parseFloat(amount.toFixed(2)),
               signature: tx.signature,
@@ -110,23 +110,43 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    // CLEANUP: deduplicate by address, keep newest, sort newest-first
-    const seenAddresses = new Set();
-    const cleanedWinners = [];
+    // Aggregate winners by address, accumulate amounts and transfers
+    const winnersMap = new Map();
 
     for (const w of updatedWinners) {
-      if (IGNORED_ADDRESSES.has(w.address)) continue; // skip distro/program wallets
-      if (!seenAddresses.has(w.address)) {
-        cleanedWinners.push(w);
-        seenAddresses.add(w.address);
+      if (IGNORED_ADDRESSES.has(w.address)) continue;
+
+      if (winnersMap.has(w.address)) {
+        const existing = winnersMap.get(w.address);
+        existing.amount += w.amount;
+        existing.transfers.push({
+          signature: w.signature,
+          amount: w.amount,
+          tx: w.tx,
+          timestamp: w.timestamp
+        });
+        existing.timestamp = Math.max(existing.timestamp, w.timestamp);
+      } else {
+        winnersMap.set(w.address, {
+          address: w.address,
+          amount: w.amount,
+          transfers: [{
+            signature: w.signature,
+            amount: w.amount,
+            tx: w.tx,
+            timestamp: w.timestamp
+          }],
+          timestamp: w.timestamp
+        });
       }
     }
 
-    // Sort by timestamp descending (newest first)
-    cleanedWinners.sort((a, b) => b.timestamp - a.timestamp);
+    // Convert map to array & sort newest-first
+    const cleanedWinners = Array.from(winnersMap.values())
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, MAX_WINNERS);
 
-    // Write top MAX_WINNERS
-    writeFileSync(WINNERS_PATH, JSON.stringify(cleanedWinners.slice(0, MAX_WINNERS), null, 2));
+    writeFileSync(WINNERS_PATH, JSON.stringify(cleanedWinners, null, 2));
 
     console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${cleanedWinners.length} (fetched ${totalFetched} txs).`);
   } catch (err) {
