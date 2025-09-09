@@ -82,20 +82,18 @@ async function main() {
 
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
-          // ✅ Check both fields for sender
-          const isOutgoing = (transfer.fromUserAccount === DISTRIBUTION_WALLET || transfer.from === DISTRIBUTION_WALLET);
+          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
           const recipient = transfer.toUserAccount || transfer.to;
-          const amount = transfer.tokenAmount?.amount
-            ? Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS)
-            : 0;
+          const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
+          // Skip swaps/program transfers or non-legit recipients
           if (!isFart || !isOutgoing || !recipient || IGNORED_ADDRESSES.has(recipient) || amount < MIN_AMOUNT) continue;
 
           const key = `${tx.signature}_${recipient}`;
           if (!knownTransfers.has(key)) {
             console.log(`➡ Winner detected: ${recipient} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
 
-            updatedWinners.push({
+            updatedWinners.unshift({
               address: recipient,
               amount: parseFloat(amount.toFixed(2)),
               signature: tx.signature,
