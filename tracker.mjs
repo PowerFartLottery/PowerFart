@@ -1,7 +1,10 @@
 // tracker.mjs
+// Automated Fartcoin Winner Tracker (ESM version for GitHub Actions)
+
 import fetch from 'node-fetch';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
+// === CONFIG ===
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 const DISTRIBUTION_WALLET = '6cPZe9GFusuZ9rW48FZPMc6rq318FT8PvGCX7WqG47YE';
 const FARTCOIN_MINT = '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump';
@@ -11,6 +14,7 @@ const WINNERS_PATH = './winners.json';
 const BATCH_LIMIT = 100;
 const MAX_WINNERS = 500;
 
+// Addresses to ignore (swap/program accounts)
 const IGNORED_ADDRESSES = new Set([
   DISTRIBUTION_WALLET,
   'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
@@ -21,19 +25,23 @@ const IGNORED_ADDRESSES = new Set([
   'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 ]);
 
+// Check if tx timestamp is in the first 2 minutes of the hour
 function isWithinFirst2Minutes(ts) {
   if (!ts) return false;
   const d = new Date(ts * 1000);
   return d.getUTCMinutes() < 2;
 }
 
+// Load existing winners
 async function fetchExistingWinners() {
   if (existsSync(WINNERS_PATH)) {
-    return JSON.parse(readFileSync(WINNERS_PATH, 'utf-8'));
+    const data = readFileSync(WINNERS_PATH, 'utf-8');
+    return JSON.parse(data);
   }
   return [];
 }
 
+// Fetch a batch of transactions from Helius
 async function fetchTransactions(before = null) {
   let url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=${BATCH_LIMIT}`;
   if (before) url += `&before=${before}`;
@@ -45,7 +53,7 @@ async function fetchTransactions(before = null) {
 async function main() {
   try {
     const existing = await fetchExistingWinners();
-    const knownTransfers = new Set(existing.flatMap(w => (w.transfers || []).map(t => `${t.signature}_${w.address}`)));
+    const knownTransfers = new Set(existing.map(w => `${w.signature}_${w.address}`));
     const updatedWinners = [...existing];
 
     let before = null;
@@ -63,16 +71,20 @@ async function main() {
       before = transactions[transactions.length - 1].signature;
 
       for (const tx of transactions) {
-        if (!isWithinFirst2Minutes(tx.timestamp)) continue;
+        if (!isWithinFirst2Minutes(tx.timestamp)) {
+          const when = tx.timestamp ? new Date(tx.timestamp * 1000).toISOString() : 'n/a';
+          console.log(`⏩ Skipping tx outside prize window (UTC ${when}): ${tx.signature}`);
+          continue;
+        }
 
         const tokenTransfers = tx.tokenTransfers || [];
         if (!tokenTransfers.length) continue;
 
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
-          const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
+          // ✅ Check both fields for sender
+          const isOutgoing = (transfer.fromUserAccount === DISTRIBUTION_WALLET || transfer.from === DISTRIBUTION_WALLET);
           const recipient = transfer.toUserAccount || transfer.to;
-
           const amount = transfer.tokenAmount?.amount
             ? Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS)
             : 0;
@@ -100,43 +112,23 @@ async function main() {
       if (transactions.length < BATCH_LIMIT) keepGoing = false;
     }
 
-    const winnersMap = new Map();
+    // CLEANUP: deduplicate by address, keep newest, sort newest-first
+    const seenAddresses = new Set();
+    const cleanedWinners = [];
 
     for (const w of updatedWinners) {
-      if (IGNORED_ADDRESSES.has(w.address)) continue;
-
-      if (winnersMap.has(w.address)) {
-        const existing = winnersMap.get(w.address);
-        existing.amount += w.amount;
-        existing.transfers.push({
-          signature: w.signature,
-          amount: w.amount,
-          tx: w.tx,
-          timestamp: w.timestamp
-        });
-        existing.timestamp = Math.max(existing.timestamp, w.timestamp);
-      } else {
-        winnersMap.set(w.address, {
-          address: w.address,
-          amount: w.amount,
-          transfers: [{
-            signature: w.signature,
-            amount: w.amount,
-            tx: w.tx,
-            timestamp: w.timestamp
-          }],
-          timestamp: w.timestamp
-        });
+      if (IGNORED_ADDRESSES.has(w.address)) continue; // skip distro/program wallets
+      if (!seenAddresses.has(w.address)) {
+        cleanedWinners.push(w);
+        seenAddresses.add(w.address);
       }
     }
 
-    // Remove winners with 0 amount
-    const cleanedWinners = Array.from(winnersMap.values())
-      .filter(w => w.amount > 0)
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, MAX_WINNERS);
+    // Sort by timestamp descending (newest first)
+    cleanedWinners.sort((a, b) => b.timestamp - a.timestamp);
 
-    writeFileSync(WINNERS_PATH, JSON.stringify(cleanedWinners, null, 2));
+    // Write top MAX_WINNERS
+    writeFileSync(WINNERS_PATH, JSON.stringify(cleanedWinners.slice(0, MAX_WINNERS), null, 2));
 
     console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${cleanedWinners.length} (fetched ${totalFetched} txs).`);
   } catch (err) {
