@@ -41,6 +41,7 @@ async function main() {
     let before = null;
     let keepGoing = true;
     let totalFetched = 0;
+    let newAdded = 0;
 
     while (keepGoing) {
       const transactions = await fetchTransactions(before);
@@ -53,9 +54,11 @@ async function main() {
       before = transactions[transactions.length - 1].signature;
 
       for (const tx of transactions) {
-        if (knownSignatures.has(tx.signature)) continue;
-
         const tokenTransfers = tx.tokenTransfers || [];
+        if (!tokenTransfers.length) continue;
+
+        let txHadNew = false;
+
         for (const transfer of tokenTransfers) {
           const isFart = transfer.mint === FARTCOIN_MINT;
           const isOutgoing = transfer.fromUserAccount === DISTRIBUTION_WALLET;
@@ -63,18 +66,28 @@ async function main() {
           const amount = Number(transfer.tokenAmount.amount) / Math.pow(10, DECIMALS);
 
           if (isFart && isOutgoing && toOtherWallet && amount >= MIN_AMOUNT) {
-            console.log(`➡ Outgoing FART detected: ${transfer.toUserAccount} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
-            
-            updatedWinners.unshift({
-              address: transfer.toUserAccount,
-              amount: parseFloat(amount.toFixed(2)),
-              signature: tx.signature,
-              tx: `https://solscan.io/tx/${tx.signature}`,
-              timestamp: ((tx.timestamp || Math.floor(Date.now() / 1000)) * 1000)
-            });
+            if (!knownSignatures.has(tx.signature)) {
+              console.log(`➡ Outgoing FART detected: ${transfer.toUserAccount} received ${amount.toFixed(2)} FART (tx: ${tx.signature})`);
 
-            knownSignatures.add(tx.signature);
+              updatedWinners.unshift({
+                address: transfer.toUserAccount,
+                amount: parseFloat(amount.toFixed(2)),
+                signature: tx.signature,
+                tx: `https://solscan.io/tx/${tx.signature}`,
+                timestamp: ((tx.timestamp || Math.floor(Date.now() / 1000)) * 1000)
+              });
+
+              knownSignatures.add(tx.signature);
+              newAdded++;
+              txHadNew = true;
+            } else {
+              console.log(`⏭️ Already had tx: ${tx.signature}`);
+            }
           }
+        }
+
+        if (!txHadNew && tokenTransfers.length > 0) {
+          console.log(`ℹ️ No qualifying FART transfer in tx: ${tx.signature}`);
         }
       }
 
@@ -89,7 +102,8 @@ async function main() {
 
     // Keep newest MAX_WINNERS
     writeFileSync(WINNERS_PATH, JSON.stringify(uniqueWinners.slice(0, MAX_WINNERS), null, 2));
-    console.log(`✅ Winners file updated. Total winners saved: ${uniqueWinners.length} (fetched ${totalFetched} txs).`);
+
+    console.log(`✅ Winners file updated. Added ${newAdded} new winners. Total saved: ${uniqueWinners.length} (fetched ${totalFetched} txs).`);
   } catch (err) {
     console.error('❌ Error in winner tracker:', err);
   }
